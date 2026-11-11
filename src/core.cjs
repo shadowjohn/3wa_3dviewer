@@ -1,6 +1,6 @@
 const path = require('node:path');
 const fs=require('node:fs/promises');
-const SUPPORTED=['.glb','.gltf','.b3dm'];
+const SUPPORTED=['.glb','.gltf','.b3dm','.vrm'];
 function glbArgument(args) { return args.find(a => !a.startsWith('--') && SUPPORTED.includes(path.extname(a).toLowerCase())); }
 function validateGlb(buffer) {
  if(buffer.length<20) throw Error('檔案太短，不是有效的 GLB。');
@@ -46,3 +46,11 @@ async function embedGltf(file,bytes){
  return {json,bytes:Buffer.from(JSON.stringify(json)),total};
 }
 module.exports={glbArgument,validateGlb,unpackB3dm,safeRelative,embedGltf,SUPPORTED};
+
+function vrmInfo(json){
+ const one=json.extensions?.VRMC_vrm,zero=json.extensions?.VRM;
+ if(one){if(one.specVersion!=='1.0')throw Error('Unsupported VRM version: '+one.specVersion);return {version:'1.0',name:String(one.meta?.name||''),authors:(one.meta?.authors||[]).map(String).join(', ')};}
+ if(zero){if(zero.specVersion&&!/^0\./.test(zero.specVersion))throw Error('Unsupported VRM version: '+zero.specVersion);return {version:'0.x',name:String(zero.meta?.title||''),authors:String(zero.meta?.author||'')};}
+ return null;
+}
+module.exports.vrmInfo=vrmInfo;

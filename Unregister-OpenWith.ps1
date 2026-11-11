@@ -1,5 +1,5 @@
 $ErrorActionPreference='Stop'
-foreach($ext in @('.glb','.gltf','.b3dm')){
+foreach($ext in @('.glb','.gltf','.b3dm','.vrm')){
  $key='HKCU:\Software\Classes\'+$ext+'\OpenWithProgids'
  if(Test-Path -LiteralPath $key){Remove-ItemProperty -LiteralPath $key -Name '3WA.3DViewer' -ErrorAction SilentlyContinue}
 }

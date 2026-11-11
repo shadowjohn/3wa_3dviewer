@@ -1,7 +1,7 @@
 const {app,BrowserWindow,ipcMain,dialog,session,shell}=require('electron');
 const fs=require('node:fs/promises'), path=require('node:path');
 const {pathToFileURL}=require('node:url');
-const {glbArgument,validateGlb,unpackB3dm,embedGltf,SUPPORTED}=require('./core.cjs');
+const {glbArgument,validateGlb,unpackB3dm,embedGltf,vrmInfo,SUPPORTED}=require('./core.cjs');
 const {DISPLAY_VERSION,checkUpdates}=require('./version.cjs');
 const smokeIndex=process.argv.indexOf('--smoke');
 const smokeFile=smokeIndex>=0?process.argv[smokeIndex+1]:null;
@@ -15,19 +15,20 @@ function trusted(e){return e.sender===win?.webContents&&e.senderFrame?.url===pat
 function handle(name,fn){ipcMain.handle(name,(e,...args)=>{if(!trusted(e))throw Error('Unauthorized sender');return fn(...args);});}
 async function model(file){
  const request=++loadRequest;
- if(typeof file!=='string'||!path.isAbsolute(file)||!SUPPORTED.includes(path.extname(file).toLowerCase()))throw Error('請選擇 .glb、.gltf 或 .b3dm 檔案。');
+ if(typeof file!=='string'||!path.isAbsolute(file)||!SUPPORTED.includes(path.extname(file).toLowerCase()))throw Error('請選擇 .glb、.gltf、.b3dm 或 .vrm 檔案。');
  if(file.startsWith('\\\\')||file.startsWith('//'))throw Error('第一版僅讀取本機磁碟模型，請先複製網路分享檔案到本機。');
  const stat=await fs.stat(file);if(!stat.isFile())throw Error('不是檔案。');if(stat.size>1024**3)throw Error('單檔上限為 1 GB，請先簡化模型。');
  let bytes=await fs.readFile(file),json,note='',kind='glb';const ext=path.extname(file).toLowerCase();
  if(ext==='.gltf'){const b=await embedGltf(file,bytes);bytes=b.bytes;json=b.json;kind='gltf';note='外部資源僅讀取模型所在目錄內的檔案。';}
  else if(ext==='.b3dm'){const b=unpackB3dm(bytes);bytes=b.bytes;json=b.json;note=b.note;}
  else json=validateGlb(bytes);
+ const avatar=vrmInfo(json);if(ext==='.vrm'&&!avatar)throw Error('VRM extension missing: this file is not a VRM avatar.');
  if(request!==loadRequest)return null;
  selected=file;win.setTitle(path.basename(file)+' · 3WA 3D Viewer');
- return {name:path.basename(file),size:stat.size,kind,note,data:new Uint8Array(bytes),extensions:json.extensionsUsed||[]};
+ return {name:path.basename(file),size:stat.size,kind,note,avatar,data:new Uint8Array(bytes),extensions:json.extensionsUsed||[]};
 }
 handle('initial',()=>selected?model(path.resolve(selected)):null);
-handle('open',async()=>{const r=await dialog.showOpenDialog(win,{filters:[{name:'3D 模型',extensions:['glb','gltf','b3dm']}],properties:['openFile']});return r.canceled?null:model(r.filePaths[0]);});
+handle('open',async()=>{const r=await dialog.showOpenDialog(win,{filters:[{name:'3D 模型',extensions:['glb','gltf','b3dm','vrm']}],properties:['openFile']});return r.canceled?null:model(r.filePaths[0]);});
 handle('drop',file=>model(file));
 handle('snapshot',async()=>{const r=await dialog.showSaveDialog(win,{defaultPath:'model-view.png',filters:[{name:'PNG',extensions:['png']}]});if(r.canceled)return false;await fs.writeFile(r.filePath,(await win.webContents.capturePage()).toPNG());return true;});
 handle('config',()=>({smoke:!!smokeFile,version:DISPLAY_VERSION}));

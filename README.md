@@ -43,3 +43,7 @@ GitHub Actions 在版本 tag 推送後執行單元測試、生成標準/壓縮�
 Electron sandbox / contextIsolation 開啟，renderer 無 Node 權限、模型網路請求被阻擋；更新 API 只在明確點擊時由主程序呼叫固定 GitHub endpoint。主頁 CSP 不允許 unsafe-eval；官方 Basis 解碼器在固定本機 worker 內執行。
 
 原 repository LICENSE 保留。Electron、Three.js、Draco/Basis 的授權檔隨 package 保留。測試與相容性證據見 docs/VALIDATION.md。
+
+## VRM local preview
+
+VRM 0.x / 1.0 support is available in this working tree. See [VRM notes](docs/VRM.md) for scope, samples, and local preview packaging. This change has not been published.

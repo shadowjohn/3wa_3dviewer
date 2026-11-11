@@ -11,4 +11,5 @@ const fs=require('node:fs');
  fs.writeFileSync('web/decoders/basis/worker.js',body);
  await require('esbuild').build({entryPoints:['src/viewer.js'],bundle:true,outfile:'web/viewer.js',format:'esm',target:'chrome130',minify:true,legalComments:'eof',plugins:[{name:'static-basis-worker',setup(build){build.onLoad({filter:/KTX2Loader\.js$/},args=>{let contents=fs.readFileSync(args.path,'utf8');const before='this.workerSourceURL = URL.createObjectURL( new Blob( [ body ] ) );';if(!contents.includes(before))throw Error('KTX2Loader changed; review static worker patch.');contents=contents.replace(before,"this.workerSourceURL = new URL('decoders/basis/worker.js', window.location.href).href;");return {contents,loader:'js'};});}}]});
  fs.copyFileSync('node_modules/three/LICENSE','web/THREE-LICENSE.txt');
+ fs.copyFileSync('node_modules/@pixiv/three-vrm/LICENSE','web/THREE-VRM-LICENSE.txt');
 })().catch(e=>{console.error(e);process.exitCode=1;});

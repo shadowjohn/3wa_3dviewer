@@ -7,3 +7,5 @@ portable-data/
 *.bin
 *.log
 /web/
+
+*.vrm
