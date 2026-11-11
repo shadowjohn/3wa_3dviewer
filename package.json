@@ -1,0 +1,26 @@
+{
+  "name": "3wa-3dviewer",
+  "version": "0.1.0",
+  "description": "Offline portable GLB viewer",
+  "main": "src/main.cjs",
+  "author": "3WA",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "build": "node scripts/build.cjs",
+    "test": "node --test test/*.test.cjs",
+    "package": "npm run build && node scripts/package.cjs"
+  },
+  "devDependencies": {
+    "@gltf-transform/core": "^4.5.1",
+    "@gltf-transform/extensions": "^4.5.1",
+    "@gltf-transform/functions": "^4.5.1",
+    "draco3dgltf": "^1.5.9",
+    "electron": "^45.3.0",
+    "esbuild": "^0.28.2",
+    "meshoptimizer": "^1.3.0"
+  },
+  "dependencies": {
+    "three": "^0.187.0"
+  }
+}

@@ -1,0 +1,9 @@
+node_modules/
+release/
+qa/
+portable-data/
+*.glb
+*.gltf
+*.bin
+*.log
+/web/

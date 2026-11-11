@@ -1,0 +1,63 @@
+name: Build Windows portable release
+on:
+  push:
+    tags: ['20*.*']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows-release:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Verify version
+        shell: pwsh
+        run: |
+          $version = node -p "require('./src/version.cjs').DISPLAY_VERSION"
+          if ($env:GITHUB_REF_TYPE -eq 'tag' -and $env:GITHUB_REF_NAME -ne $version) { throw 'Tag does not match application version' }
+      - run: npm ci
+      - run: node node_modules/electron/install.js
+      - run: npm audit --audit-level=high
+      - run: npm test
+      - run: node scripts/fetch-fixture.mjs
+      - run: node scripts/fixtures.mjs
+      - run: npm run package
+      - name: Test packaged executable
+        shell: pwsh
+        run: |
+          $version = node -p "require('./src/version.cjs').DISPLAY_VERSION"
+          node scripts/smoke.cjs "release/3wa_3dviewer-$version-win-x64/3wa_3dviewer.exe" --packaged
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged smoke failed' }
+      - name: Create ZIP and checksum
+        shell: pwsh
+        run: |
+          $version = node -p "require('./src/version.cjs').DISPLAY_VERSION"
+          $dir = "release/3wa_3dviewer-$version-win-x64"
+          $zip = "$dir.zip"
+          Compress-Archive -Path "$dir/*" -DestinationPath $zip
+          $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $zip).Hash.ToLower()
+          "$hash  $([IO.Path]::GetFileName($zip))" | Set-Content -Encoding ascii "$zip.sha256"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: windows-portable
+          path: |
+            release/*.zip
+            release/*.sha256
+          retention-days: 14
+      - name: Publish release
+        if: github.ref_type == 'tag'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$env:GITHUB_REF_NAME" --json tagName 2>$null
+          if ($LASTEXITCODE -eq 0) { throw 'Release already exists; refusing to overwrite' }
+          $files = @(Get-ChildItem release/*.zip, release/*.sha256 | ForEach-Object FullName)
+          gh release create "$env:GITHUB_REF_NAME" @files --verify-tag --title "3WA 3D Viewer $env:GITHUB_REF_NAME" --notes-file docs/RELEASE.md
+          if ($LASTEXITCODE -ne 0) { throw 'Release publishing failed' }
