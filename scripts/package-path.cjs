@@ -1,0 +1,1 @@
+const path=require('node:path');function outputPath(version,working=false){if(!/^\d{8}\.\d{3}$/.test(version))throw Error('Invalid version');return path.resolve('release',working?'3wa_3dviewer-working-win-x64':'3wa_3dviewer-'+version+'-win-x64');}module.exports={outputPath};

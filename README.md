@@ -4,7 +4,7 @@ Windows x64 portable 模型檢視器。開啟自己的模型，不拿範例取�
 
 ## 使用
 
-保留 portable 資料夾完整內容，啟動 **3wa_3dviewer.exe**，點「開啟模型」或拖入檔案。支援 GLB 2.0、glTF 2.0 和標準 b3dm v1 封裝。OBJ / FBX / STL / STEP 不在這版範圍。
+保留 portable 資料夾完整內容，啟動 **3wa_3dviewer.exe**，點「開啟模型」或拖入檔案。支援 GLB 2.0、glTF 2.0 和標準 b3dm v1 封裝。本機開發預覽新增 OBJ（MTL／本地貼圖）與 STL（ASCII／binary）；FBX / STEP 尚未實作。
 
 要雙擊檔案直接看：Windows 右鍵模型 → 開啟方式 → 選擇其他應用程式 → 瀏覽至本程式 exe → 選「一律」。程式不偷偷取代現有預設。可選執行同目錄 Register-OpenWith.ps1 加入 .glb/.gltf/.b3dm 候選；Unregister-OpenWith.ps1 可撤銷。搬動資料夾後需重新選擇 exe 路徑。
 
@@ -47,3 +47,45 @@ Electron sandbox / contextIsolation 開啟，renderer 無 Node 權限、模型�
 ## VRM local preview
 
 VRM 0.x / 1.0 support is available in this working tree. See [VRM notes](docs/VRM.md) for scope, samples, and local preview packaging. This change has not been published.
+
+## 格式支援與完成度（2026-11-12 盤點）
+
+本機設定預覽新增「設定 → 檔案關聯」與「關於」（版本、作者、阿寶、檢查更新）。勾選/全選只註冊 Open With 候選，Windows 預設仍需在系統介面選擇，詳見 [SETTINGS.md](docs/SETTINGS.md)。尚未發布。
+
+以 `main 37136b2` 原始碼為準，**不是宣稱現有 Release 已新增所有格式**。初版上方列出的範圍仍是初版能力；以下擴充目前只列 tasks。
+完成度採可核實狀態，不填推估百分比；「套件內有 loader」不等於本產品已支援。「已驗證」僅涵蓋所列樣本，不代表全規格相容。
+
+| 格式 | 現在可開啟 | 完成度 | 驗證範圍／限制 |
+| --- | --- | --- | --- |
+| DGN | 否 | 未實作 | V7/V8 與引擎授權待評估 |
+| DWG | 否 | 未實作 | 版本、xref、字型、solid 與授權待評估 |
+| IFC | 否 | 未實作 | 幾何、構件屬性與 WASM 整合待做 |
+| DXF | 否 | 未實作 | 先規劃 2D 圖元/圖層；不承諾 3D solid |
+| B3DM | 有限 | 部分實作，限定範圍已驗證 | 標準 v1 28-byte header/內嵌 GLB；歷史 smoke/樣本通過；無完整 tileset/地理定位/batch picking |
+| glTF | 是，2.0 | 已實作，限定範圍已驗證 | 本地 bin/貼圖、壓縮樣本有歷史測試；非全部 extensions；本次未重做視覺驗收 |
+| GLB | 是，2.0 | 已實作，限定範圍已驗證 | RC390/燈具與 Draco/Meshopt/KTX2/WebP 有歷史驗證；本次視覺複驗未完 |
+| FBX | 否 | 未實作 | Three.js loader 尚未接入本產品 |
+| OBJ | 本機預覽可開 | 已實作，待視覺驗證 | OBJ/MTL/受限制本地貼圖；安全依賴與解析測試通過，未發布 |
+| STEP | 否 | 未實作 | CAD kernel、三角化、單位/組裝與授權待做 |
+| STP | 否 | 未實作 | STEP 別名，共用未來 loader，但需別名開檔測試 |
+| STL | 本機預覽可開 | 已實作，待視覺驗證 | ASCII/binary 解析測試通過；STL 無標準貼圖與單位，未發布 |
+| VRM | 預覽版可開 | 已實作，限定範圍已驗證 | 0.x/1.0 歷史驗證；本次公司已目視 VRM0 正常，VRM1/互動複驗未完；未發布新版 |
+
+目前照明是環境光、曝光及 VRM 固定補光；**自然太陽光開關、方向調整、陰影控制均未實作**。
+本次公司重跑 17 項單元測試與 build 通過，不將其冒充所有格式視覺驗收。
+詳細分階段任務、候選技術、授權閘門及驗收條件見 [TASKS.md](docs/TASKS.md)；歷史證據見 [VALIDATION.md](docs/VALIDATION.md) 與 [VRM.md](docs/VRM.md)。
+
+## 本機格式擴充進度（2026-11-12，未發布）
+| 格式 | 完成度（可核實狀態，不以百分比推估） | 尚待 |
+|---|---|---|
+| OBJ | 實作：多邊形、MTL、同目錄/子目錄貼圖；單元與安全測試通過 | portable 實際貼圖/大檔視覺驗證 |
+| STL | 實作：ASCII/binary 與內容/長度驗證 | portable 視覺驗證；不含標準單位/貼圖 |
+| PLY | 實作：ASCII/little-endian/big-endian 一般網格/點雲，頂點色與法線；拒絕 Gaussian Splat schema | portable 視覺驗證；僅 vertex/face element |
+| DAE | 實作：受限 COLLADA 1.4.0/1.4.1、相對本地貼圖；嚴格 XML 驗證 | portable 視覺、動畫/骨架/複雜材質相容性，不保證完整 COLLADA |
+| tileset.json | 規劃，未實作 | 階層/transform/LOD/安全依賴與實際樣本 |
+| SKP | 調查，未實作 | 原生 SDK 整合與散布授權確認 |
+
+OBJ/STL/PLY 單檔上限256MB、DAE32MB；數量/列表/XML深度另有限制，外部相對資源總量1GB。遇缺檔/越界/不支援資源會報錯，不默默上網取材質。這些是防護與已測範圍，不是保證任意惡意檔安全。
+
+## 統一工作版
+使用 `npm run package:working`，固定輸出到 `release/3wa_3dviewer-working-win-x64/3wa_3dviewer.exe`。後續不再產生 r8/r9 等工作副本；更新前須關閉這個工作版，腳本發現它執行中會拒絕。`portable-data` 保留不覆蓋。正式 `npm run package` 仍採版本目錄且禁止覆寫；這次未發 Release。EXE 顯示名稱已烙入 PE 資源，但仍未申請程式碼簽章，Windows 舊的開啟方式清單可能快取舊名稱。

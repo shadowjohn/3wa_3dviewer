@@ -1,6 +1,6 @@
 const path = require('node:path');
 const fs=require('node:fs/promises');
-const SUPPORTED=['.glb','.gltf','.b3dm','.vrm'];
+const SUPPORTED=['.glb','.gltf','.b3dm','.vrm','.obj','.stl','.ply','.dae'];
 function glbArgument(args) { return args.find(a => !a.startsWith('--') && SUPPORTED.includes(path.extname(a).toLowerCase())); }
 function validateGlb(buffer) {
  if(buffer.length<20) throw Error('檔案太短，不是有效的 GLB。');
