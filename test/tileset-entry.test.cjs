@@ -1,0 +1,2 @@
+const test=require('node:test'),assert=require('node:assert/strict');const {glbArgument,SUPPORTED}=require('../src/core.cjs');
+test('tileset entry is explicit and does not blanket associate JSON',()=>{assert.equal(glbArgument(['C:\\models\\tileset.json']),'C:\\models\\tileset.json');assert.equal(glbArgument(['C:\\data\\settings.json']),undefined);assert.equal(SUPPORTED.includes('.json'),false);});

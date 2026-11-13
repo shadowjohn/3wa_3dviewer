@@ -128,3 +128,10 @@ OBJ/STL/PLY 單檔上限256MB、DAE32MB；數量/列表/XML深度另有限制，
 官方 C API 可直接讀寫 .skp，Windows64 原生程式需 SketchUpAPI.dll、SketchUpCommonPreferences.dll 與 VC++ runtime；API 主執行緒限制。它不是現有 Three.js loader，需原生 helper 或合法轉檔流程。未查得本次可採用的完整 SDK 散布授權條款，因此不打包/不宣稱可自由再散布。
 來源：https://extensions.sketchup.com/developers/sketchup_c_api/sketchup/index.html （2026-11-12 查證）
 - [ ] 取得/閱讀官方 SDK 散布協議，確認商用/離線/redistribution 條款後再決策。
+
+### TILESET implementation update
+- [x] Explicit local tileset entry and non-blanket JSON association behavior.
+- [x] Bounded hierarchy preload, safe dependency boundary and explicit unsupported diagnostics.
+- [x] Renderer transform/RTC/Y-up conversion and ADD/REPLACE SSE selection unit tests.
+- [ ] Native visual validation with parent/child material and geometry differences; real sample verification.
+- [ ] Region/ECEF local tangent frame, streaming/frustum/cache and large datasets remain unsupported.

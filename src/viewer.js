@@ -1,3 +1,4 @@
+import {buildTileset,updateTileset} from './tileset-renderer.mjs';
 import {parseMesh} from './mesh-loaders.mjs';
 import * as THREE from 'three';
 import './settings.js';
@@ -9,7 +10,7 @@ import {KTX2Loader} from 'three/addons/loaders/KTX2Loader.js';
 import {MeshoptDecoder} from 'three/addons/libs/meshopt_decoder.module.js';
 import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
 const $=id=>document.getElementById(id),viewport=$('viewport');
-let vrm=null;
+let vrm=null,tilesRuntime=null;
 let renderer,controls,model,grid,mixer,seq=0,radius=1,meta,frames=0,animationCount=0,draco,ktx;
 const scene=new THREE.Scene();scene.background=new THREE.Color('#19212c');
 const avatarLight=new THREE.DirectionalLight(0xffffff,1.2);avatarLight.position.set(1,2,3);avatarLight.visible=false;scene.add(avatarLight);
@@ -39,19 +40,19 @@ async function load(payload){
  const supported=new Set(['VRM','VRMC_vrm','VRMC_materials_mtoon','VRMC_springBone','VRMC_node_constraint','VRMC_materials_hdr_emissiveMultiplier','KHR_draco_mesh_compression','EXT_meshopt_compression','KHR_meshopt_compression','KHR_mesh_quantization','KHR_texture_basisu','EXT_texture_webp','KHR_materials_unlit','KHR_materials_clearcoat','KHR_materials_transmission','KHR_materials_volume','KHR_materials_ior','KHR_materials_specular','KHR_materials_sheen','KHR_materials_iridescence','KHR_materials_anisotropy','KHR_materials_emissive_strength','KHR_materials_dispersion','KHR_materials_diffuse_transmission','KHR_texture_transform','KHR_lights_punctual','EXT_mesh_gpu_instancing']);
  const arr=payload.data,data=arr.buffer.slice(arr.byteOffset,arr.byteOffset+arr.byteLength),view=new DataView(data);
  const isMesh=['obj','stl','ply','dae'].includes(payload.kind);
- const json=isMesh?{}:payload.kind==='gltf'?JSON.parse(new TextDecoder().decode(data)):JSON.parse(new TextDecoder().decode(new Uint8Array(data,20,view.getUint32(12,true))).trim());
+ const json=(isMesh||payload.kind==='tileset')?{}:payload.kind==='gltf'?JSON.parse(new TextDecoder().decode(data)):JSON.parse(new TextDecoder().decode(new Uint8Array(data,20,view.getUint32(12,true))).trim());
  const unsupported=(json.extensionsRequired||[]).filter(e=>!supported.has(e));if(unsupported.length)throw Error('尚未支援必要擴充：'+unsupported.join(', '));
- const gltf=isMesh?await parseMesh(payload,manager):await loader.parseAsync(payload.kind==='gltf'?new TextDecoder().decode(data):data,'');if(ticket!==seq){dispose(gltf.scene);return;}
+ const gltf=payload.kind==='tileset'?await buildTileset(payload.tileset,b=>loader.parseAsync(b,''),dispose):isMesh?await parseMesh(payload,manager):await loader.parseAsync(payload.kind==='gltf'?new TextDecoder().decode(data):data,'');if(ticket!==seq){dispose(gltf.scene);return;}
  const nextVrm=gltf.userData.vrm;
  if(payload.avatar&&!nextVrm){dispose(gltf.scene);throw Error('Unable to construct VRM avatar. Check humanoid and metadata.');}
  if(nextVrm){VRMUtils.rotateVRM0(nextVrm);nextVrm.update(0);}
  let meshes=0,triangles=0,points=0;gltf.scene.traverse(o=>{if(o.isPoints)points+=o.geometry.attributes.position?.count||0;if(o.isMesh){meshes++;triangles+=(o.geometry.index?.count||o.geometry.attributes.position?.count||0)/3;}});
  if(!meshes&&!points){dispose(gltf.scene);throw Error('模型沒有可顯示的網格。');}
  const box=new THREE.Box3().setFromObject(gltf.scene);if(box.isEmpty()||![...box.min.toArray(),...box.max.toArray()].every(Number.isFinite)){dispose(gltf.scene);throw Error('模型座標無效。');}
- if(mixer){mixer.stopAllAction();mixer.uncacheRoot(model);}if(model)container.remove(model);dispose(model);materials.clear();vrm=nextVrm||null;avatarLight.visible=!!vrm;model=gltf.scene;container.rotation.set(0,0,0);container.add(model);model.traverse(o=>{if(o.isMesh)materials.set(o,o.material);});
+ if(mixer){mixer.stopAllAction();mixer.uncacheRoot(model);}if(model)container.remove(model);dispose(model);materials.clear();tilesRuntime=payload.kind==='tileset'?gltf:null;vrm=nextVrm||null;avatarLight.visible=!!vrm;model=gltf.scene;container.rotation.set(0,0,0);container.add(model);model.traverse(o=>{if(o.isMesh)materials.set(o,o.material);});
  animationCount=gltf.animations.length;mixer=animationCount?new THREE.AnimationMixer(model):null;gltf.animations.forEach(a=>mixer.clipAction(a).play());
  meta={name:payload.name,bytes:payload.size,meshes,points,triangles:Math.round(triangles),extensions:payload.extensions,animations:animationCount,note:payload.note,vrm:payload.avatar?{...payload.avatar,mtoonMaterials:vrm.materials.filter(m=>m.isMToonMaterial).length}:null};
- info([['檔案',payload.name],...(payload.avatar?[['VRM',payload.avatar.version],['角色',payload.avatar.name],['作者',payload.avatar.authors]]:[]),['檔案大小',(payload.size/1048576).toFixed(2)+' MB'],['點數',points.toLocaleString()],['三角面',Math.round(triangles).toLocaleString()],['網格 / 動畫',meshes+' / '+animationCount],['擴充',payload.extensions.join(', ')||(isMesh?payload.kind.toUpperCase():'標準 glTF 2.0')],['座標 / 資源',payload.note||'glTF 本地座標']]);
+ info([['檔案',payload.name],...(payload.avatar?[['VRM',payload.avatar.version],['角色',payload.avatar.name],['作者',payload.avatar.authors]]:[]),['檔案大小',(payload.size/1048576).toFixed(2)+' MB'],['點數',points.toLocaleString()],['三角面',Math.round(triangles).toLocaleString()],['網格 / 動畫',meshes+' / '+animationCount],['擴充',payload.extensions.join(', ')||(payload.kind==='tileset'?'3D Tiles local preview':isMesh?payload.kind.toUpperCase():'標準 glTF 2.0')],['座標 / 資源',payload.note||'glTF 本地座標']]);
  setMaterial();frame();$('welcome').hidden=true;$('loading').hidden=true;$('status').textContent='已載入 · '+payload.name;
  }catch(e){if(ticket===seq)error(e);throw e;}
 }
@@ -62,7 +63,7 @@ try{
  const pmrem=new THREE.PMREMGenerator(renderer),room=new RoomEnvironment();scene.environment=pmrem.fromScene(room,.04).texture;room.dispose();pmrem.dispose();scene.add(new THREE.HemisphereLight(0xddeeff,0x444455,.6));
  draco=new DRACOLoader().setDecoderPath('decoders/draco/');draco.setWorkerLimit(2);ktx=new KTX2Loader().setTranscoderPath('decoders/basis/').detectSupport(renderer);ktx.setWorkerLimit(2);
  new ResizeObserver(()=>{camera.aspect=viewport.clientWidth/viewport.clientHeight;camera.updateProjectionMatrix();renderer.setSize(viewport.clientWidth,viewport.clientHeight);}).observe(viewport);
- renderer.setAnimationLoop(()=>{timer.update();const dt=Math.min(timer.getDelta(),.1);if($('animation').checked){if(mixer)mixer.update(dt);vrm?.update(dt);}controls.autoRotate=$('rotate').checked;controls.update(dt);renderer.render(scene,camera);frames++;});
+ renderer.setAnimationLoop(()=>{timer.update();const dt=Math.min(timer.getDelta(),.1);if($('animation').checked){if(mixer)mixer.update(dt);vrm?.update(dt);}controls.autoRotate=$('rotate').checked;controls.update(dt);if(tilesRuntime){container.updateMatrixWorld(true);updateTileset(tilesRuntime.root,camera,viewport.clientHeight,16,container.matrixWorld);}renderer.render(scene,camera);frames++;});
 }catch(e){error(e);}
 async function action(fn){try{await fn();}catch(e){error(e);}}
 $('open').onclick=()=>action(async()=>load(await window.viewer.open()));$('save').onclick=()=>action(async()=>{if(await window.viewer.snapshot())$('status').textContent='截圖已儲存';});$('dismiss').onclick=()=>{$('error').hidden=true;};$('frame').onclick=()=>frame();

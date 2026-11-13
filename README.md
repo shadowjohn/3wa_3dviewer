@@ -89,3 +89,9 @@ OBJ/STL/PLY 單檔上限256MB、DAE32MB；數量/列表/XML深度另有限制，
 
 ## 統一工作版
 使用 `npm run package:working`，固定輸出到 `release/3wa_3dviewer-working-win-x64/3wa_3dviewer.exe`。後續不再產生 r8/r9 等工作副本；更新前須關閉這個工作版，腳本發現它執行中會拒絕。`portable-data` 保留不覆蓋。正式 `npm run package` 仍採版本目錄且禁止覆寫；這次未發 Release。EXE 顯示名稱已烙入 PE 資源，但仍未申請程式碼簽章，Windows 舊的開啟方式清單可能快取舊名稱。
+
+## Local tileset preview (implementation in progress)
+Directly open a file named `tileset.json` via the 3D Tiles filter, drag/drop or command line. `.json` is deliberately not a file-association candidate.
+The first bounded preview supports explicit hierarchies, local nested tilesets, embedded GLB and standard b3dm v1, sphere/box bounds, accumulated affine transforms and ADD/REPLACE screen-space-error LOD (16 px). glTF Y-up is converted to tile Z-up, RTC_CENTER is applied, then coordinates are recentered for viewing. This is a model preview, not a globe or georeferenced map.
+All tile resources are validated and preloaded under hard limits before rendering. This is NOT streaming for city-scale datasets; no frustum/cache eviction implementation yet. Unsupported region bounds, implicit tiling, multiple contents, pnts/i3dm/cmpt and remote URLs fail explicitly. Keep the whole dataset under the entry directory; resources escaping it are rejected.
+Automated transforms/LOD tests exist. Native visual validation and representative real tilesets remain pending; do not treat unit tests as full format compatibility.
