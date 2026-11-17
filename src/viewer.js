@@ -1,3 +1,4 @@
+import {referenceLayers} from './reference-layers.mjs';
 import {evidenceImages} from './capture-evidence.mjs';
 import {buildTileset,updateTileset} from './tileset-renderer.mjs';
 import {parseMesh} from './mesh-loaders.mjs';
@@ -66,16 +67,18 @@ try{
  new ResizeObserver(()=>{camera.aspect=viewport.clientWidth/viewport.clientHeight;camera.updateProjectionMatrix();renderer.setSize(viewport.clientWidth,viewport.clientHeight);}).observe(viewport);
  renderer.setAnimationLoop(()=>{timer.update();const dt=Math.min(timer.getDelta(),.1);if($('animation').checked){if(mixer)mixer.update(dt);vrm?.update(dt);}controls.autoRotate=$('rotate').checked;controls.update(dt);if(tilesRuntime){container.updateMatrixWorld(true);updateTileset(tilesRuntime.root,camera,viewport.clientHeight,16,container.matrixWorld);}renderer.render(scene,camera);frames++;});
 }catch(e){error(e);}
+const references=referenceLayers({viewport,canvas:renderer?.domElement,getCamera:()=>{camera.updateMatrixWorld(true);return {position:camera.position.toArray(),target:controls.target.toArray(),fov:camera.fov,near:camera.near,far:camera.far,aspect:camera.aspect,matrixWorld:camera.matrixWorld.toArray(),projectionMatrix:camera.projectionMatrix.toArray()};},setCamera:p=>{controls.enableDamping=false;controls.autoRotate=false;$('rotate').checked=false;camera.position.fromArray(p.position);controls.target.fromArray(p.target);camera.fov=p.fov;camera.near=p.near;camera.far=p.far;camera.updateProjectionMatrix();controls.update();camera.updateMatrixWorld(true);controls.enableDamping=true;},onModelVisible:visible=>{container.visible=visible;},status:text=>{$('status').textContent=text;}});
 async function action(fn){try{await fn();}catch(e){error(e);}}
 $('open').onclick=()=>action(async()=>load(await window.viewer.open()));$('save').onclick=()=>action(async()=>{if(await window.viewer.snapshot())$('status').textContent='截圖已儲存';});$('dismiss').onclick=()=>{$('error').hidden=true;};$('frame').onclick=()=>frame();
 const dirs={front:[0,0,1],back:[0,0,-1],left:[-1,0,0],right:[1,0,0],top:[0,1,.00001],iso:[1,.65,1]};document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>frame(new THREE.Vector3(...dirs[b.dataset.view])));
 $('background').onchange=()=>scene.background.set($('background').value);$('material').onchange=setMaterial;$('grid').onchange=()=>{if(grid)grid.visible=$('grid').checked;};$('exposure').oninput=()=>{renderer.toneMappingExposure=Number($('exposure').value);$('exposureValue').textContent=Number($('exposure').value).toFixed(1);};$('rotateX').onclick=()=>{container.rotation.x+=Math.PI/2;frame();};$('reset').onclick=()=>{container.rotation.set(0,0,0);frame();};
 window.addEventListener('keydown',e=>{if(e.ctrlKey&&e.key.toLowerCase()==='o'){e.preventDefault();$('open').click();}if(e.key.toLowerCase()==='f'&&!e.ctrlKey)frame();});
-window.addEventListener('dragover',e=>{e.preventDefault();document.body.classList.add('drag');});window.addEventListener('dragleave',e=>{if(!e.relatedTarget)document.body.classList.remove('drag');});window.addEventListener('drop',e=>{e.preventDefault();document.body.classList.remove('drag');const f=e.dataTransfer.files[0];if(f)action(async()=>load(await window.viewer.drop(f)));});window.viewer.onOpen(p=>action(()=>load(p)));
+window.addEventListener('dragover',e=>{e.preventDefault();document.body.classList.add('drag');});window.addEventListener('dragleave',e=>{if(!e.relatedTarget)document.body.classList.remove('drag');});window.addEventListener('drop',e=>{e.preventDefault();document.body.classList.remove('drag');const files=Array.from(e.dataTransfer.files);const media=files.filter(f=>references.isMedia(f));if(media.length)references.addFiles(media);const f=files.find(f=>!references.isMedia(f));if(f)action(async()=>load(await window.viewer.drop(f)));});window.viewer.onOpen(p=>action(()=>load(p)));
 $('updates').onclick=async()=>{const b=$('updates');b.disabled=true;b.textContent='檢查中…';$('updateProgress').hidden=false;$('updateResult').hidden=true;$('aboutDialog').setAttribute('aria-busy','true');$('release').hidden=true;try{const r=await window.viewer.checkUpdates();$('status').textContent=r.error||(r.version?(r.available?'有新版本 '+r.version+'，可開啟版本頁自行下載。':'目前已是最新穩定版 '+r.current):'目前尚無已發布的穩定版本。');$('release').hidden=!r.url;}catch(e){$('status').textContent='更新查詢失敗；離線瀏覽不受影響。';}finally{$('updateProgress').hidden=true;$('aboutDialog').setAttribute('aria-busy','false');$('updateResult').textContent=$('status').textContent;$('updateResult').hidden=false;b.disabled=false;b.textContent='檢查更新';}};
 $('release').onclick=()=>action(()=>window.viewer.releasePage());
 async function boot(){const cfg=await window.viewer.config();$('version').textContent='3wa_3dviewer · '+cfg.version+' · VRM preview';try{
  await load(await window.viewer.initial());if(cfg.capture){
+ if(cfg.referencesData?.length){const files=cfg.referencesData.map(r=>new File([Uint8Array.from(atob(r.data),c=>c.charCodeAt(0))],r.name));const result=await references.addFiles(files);if(result.errors.length)throw Error(result.errors.join('; '));await references.configure(cfg.referencesData.map(r=>r.settings),cfg.referenceMode,cfg.selectedReference);}
  for(const el of document.querySelectorAll('header,aside'))el.style.visibility='hidden';
  viewport.style.cssText='position:fixed;inset:0;width:100vw;height:100vh;z-index:9999';
  $('animation').checked=false;$('rotate').checked=false;controls.enableDamping=false;controls.autoRotate=false;
@@ -91,7 +94,7 @@ async function boot(){const cfg=await window.viewer.config();$('version').textCo
   if(cfg.forwardAxis==='-Z'){direction.x*=-1;direction.z*=-1;}frame(direction);
   if(view==='custom'){const displacement=camera.position.clone().sub(controls.target).multiplyScalar(cfg.camera.distanceScale),offset=new THREE.Vector3(...cfg.camera.targetOffset).multiplyScalar(radius);controls.target.add(offset);controls.maxDistance=Math.max(radius*100,displacement.length()*1.1);camera.position.copy(controls.target).add(displacement);controls.update();}
   camera.updateMatrixWorld(true);renderer.render(scene,camera);
-  const images=evidenceImages(renderer.domElement,cfg,reference);
+  const images=evidenceImages(renderer.domElement,cfg,reference);if(cfg.referencesData?.length)images.layers=evidenceImages(references.composite(renderer.domElement),cfg,null)[cfg.grid?'grid':'original'];
   const pose={view,position:camera.position.toArray(),target:controls.target.toArray(),fov:camera.fov,near:camera.near,far:camera.far,aspect:camera.aspect,matrixWorld:camera.matrixWorld.toArray(),projectionMatrix:camera.projectionMatrix.toArray()};poses.push(pose);
   await window.viewer.captureFrame({view,images});
  }

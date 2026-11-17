@@ -1,6 +1,6 @@
 const fs=require('node:fs'),path=require('node:path'),cp=require('node:child_process');
 const pkg=require('../package.json'),{DISPLAY_VERSION}=require('../src/version.cjs'),{outputPath}=require('./package-path.cjs');
-const working=process.argv.includes('--working'),out=outputPath(DISPLAY_VERSION,working);
+const working=process.argv.includes('--working'),preview=process.argv.find(a=>a.startsWith('--preview='))?.slice(10)??null,out=outputPath(DISPLAY_VERSION,working,preview);
 if(fs.existsSync(out)&&!working)throw Error('Release exists. Never overwrite a published release.');
 if(working&&process.platform==='win32'){
  const result=cp.execFileSync('powershell.exe',['-NoProfile','-Command',"$p=$env:VIEWER_PACKAGE_PATH;$running=Get-CimInstance Win32_Process | Where-Object {$_.ExecutablePath -and $_.ExecutablePath.StartsWith($p+'\\',[StringComparison]::OrdinalIgnoreCase)};if($running){exit 23}"],{env:{...process.env,VIEWER_PACKAGE_PATH:out},windowsHide:true});
@@ -12,5 +12,6 @@ const app=path.join(out,'resources/app');fs.mkdirSync(app,{recursive:true});for(
 fs.writeFileSync(path.join(app,'package.json'),JSON.stringify({name:pkg.name,version:pkg.version,main:'src/packaged-entry.cjs',productName:'3wa_3dviewer'},null,2));
 fs.mkdirSync(path.join(app,'scripts'),{recursive:true});fs.copyFileSync('scripts/mcp-server.cjs',path.join(app,'scripts/mcp-server.cjs'));
 for(const f of ['README.md','LICENSE','Register-OpenWith.ps1','Unregister-OpenWith.ps1'])if(fs.existsSync(f))fs.copyFileSync(f,path.join(out,f));
-fs.mkdirSync(path.join(out,'docs'),{recursive:true});for(const f of ['VALIDATION.md','RELEASE.md','VRM.md','SETTINGS.md','TASKS.md','mcp-capture.md'])if(fs.existsSync(path.join('docs',f)))fs.copyFileSync(path.join('docs',f),path.join(out,'docs',f));
+fs.mkdirSync(path.join(out,'docs'),{recursive:true});for(const f of ['VALIDATION.md','RELEASE.md','VRM.md','SETTINGS.md','TASKS.md','mcp-capture.md','REFERENCE-LAYERS.md'])if(fs.existsSync(path.join('docs',f)))fs.copyFileSync(path.join('docs',f),path.join(out,'docs',f));
+if(preview)fs.writeFileSync(path.join(out,'PREVIEW.txt'),'Isolated reference-media preview '+preview+'; MCP 0.3.0. No existing installation changed.');
 console.log(out);

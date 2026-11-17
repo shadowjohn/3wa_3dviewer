@@ -1,0 +1,3 @@
+const {test}=require('node:test');const assert=require('node:assert/strict');const fs=require('node:fs');
+test('build batch checks dependencies, tests and bundles before packaging',()=>{const b=fs.readFileSync('build.bat','utf8');assert(b.includes('cd /d "%~dp0"'));assert(b.indexOf('npm test')<b.indexOf('npm run build'));assert(b.indexOf('npm run build')<b.indexOf('node scripts/package-local.cjs'));assert(!/rmdir|del |package:working/i.test(b));});
+test('local packaging refuses an existing version and never deletes user data',()=>{const s=fs.readFileSync('scripts/package-local.cjs','utf8');assert(s.includes('if(fs.existsSync(output))throw'));assert(!/rmSync|unlinkSync|renameSync|--working/.test(s));});

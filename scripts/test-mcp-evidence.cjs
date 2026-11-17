@@ -8,8 +8,8 @@ const assert=require('node:assert/strict'),fs=require('node:fs/promises'),path=r
  const rpc=(method,params)=>new Promise(resolve=>{const id=++next;pending.set(id,resolve);p.stdin.write(JSON.stringify({jsonrpc:'2.0',id,method,params})+'\n');});
  const call=async(name,args)=>{const r=await rpc('tools/call',{name,arguments:args});return r.result;};
  try{
- assert.equal((await rpc('initialize',{protocolVersion:'2024-11-05',capabilities:{},clientInfo:{name:'evidence-qa',version:'1'}})).result.serverInfo.version,'0.2.0');
- assert.equal((await rpc('tools/list',{})).result.tools.length,2);
+ assert.equal((await rpc('initialize',{protocolVersion:'2024-11-05',capabilities:{},clientInfo:{name:'evidence-qa',version:'1'}})).result.serverInfo.version,'0.3.0');
+ assert.equal((await rpc('tools/list',{})).result.tools.length,7);
  const info=await call('inspect_model',{modelPath});assert.ok(!info.isError);const inspection=JSON.parse(info.content[0].text);assert.equal(inspection.sha256.length,64);
  const common={modelPath,forwardAxis:'-Z',width:640,height:480,camera:{azimuth:28,elevation:12,distanceScale:.85,fov:42,targetOffset:[0,0,0]},grid:3,crop:{x:.25,y:.2,width:.5,height:.6}};
  const a=await call('capture_model_views',common);assert.ok(!a.isError,JSON.stringify(a));const ar=JSON.parse(a.content[0].text);assert.equal(ar.files.length,3);assert.equal(ar.files.find(f=>f.variant==='original').width,640);assert.equal(ar.files.find(f=>f.variant==='original').height,480);

@@ -1,0 +1,2 @@
+const {test}=require('node:test'),assert=require('node:assert/strict'),path=require('node:path');const {outputPath}=require('../scripts/package-path.cjs');
+test('media preview package uses an isolated no-overwrite directory',()=>{assert.equal(outputPath('20261116.001',false,'media20261117'),path.resolve('release','3wa_3dviewer-preview-media20261117-win-x64'));for(const tag of ['../working','x/y','a_b',''])assert.throws(()=>outputPath('20261116.001',false,tag));assert.throws(()=>outputPath('20261116.001',true,'media'));});

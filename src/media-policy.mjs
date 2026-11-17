@@ -1,0 +1,3 @@
+export const MEDIA_ACCEPT='.png,.webp,.jpg,.jpeg,.gif,.webm';
+export function mediaType(name){const ext=String(name).split('.').pop().toLowerCase();return ['png','webp','jpg','jpeg','gif'].includes(ext)?'image':ext==='webm'?'video':null;}
+export function checkMedia(file,layers){const type=mediaType(file.name);if(!type)throw Error('Unsupported reference format');if(!file.size||file.size>64*1024**2)throw Error('Each reference must be nonempty and at most 64 MB');if(layers.length>=16)throw Error('At most 16 reference layers');if(layers.reduce((n,l)=>n+l.size,0)+file.size>256*1024**2)throw Error('Reference total limit: 256 MB');return type;}
