@@ -48,4 +48,4 @@ For a separately configured MCP, point Node at this preview folder’s `resource
 Final verification: 89 unit tests, 12 model smoke cases, 10 desktop-media assertions, legacy MCP reproducible pixel-identical capture and negative cases, new source/packaged concurrent MCP session tests, and packaged 3D smoke all passed. Native multi-selection dialog clicks were not manually tested; the renderer FileList and drop event paths were exercised in Electron. GIF decoding is covered; animated GIF timing/frame selection is not certified.
 
 ## Current build
-Version 20261117.001 includes these features. Use build.bat and see BUILD.md. Earlier preview paths above document the original verification only.
+Version 20261117.002 includes these features. build.bat now safely updates release/3wa_3dviewer-working-win-x64; see BUILD.md. Earlier preview paths above document the original verification only.

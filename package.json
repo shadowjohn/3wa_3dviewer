@@ -10,7 +10,7 @@
     "build": "node scripts/build.cjs",
     "test": "node --test test/*.test.cjs",
     "package": "npm run build && node scripts/package.cjs",
-    "package:working": "npm run build && node scripts/package.cjs --working"
+    "package:working": "npm run build && node scripts/package-local.cjs"
   },
   "devDependencies": {
     "@gltf-transform/core": "^4.5.1",

@@ -15,5 +15,5 @@ call npm run build
 if errorlevel 1 exit /b 1
 node scripts/package-local.cjs
 if errorlevel 1 exit /b 1
- echo Build complete. Existing portable installations were not replaced.
+ echo Build complete. Fixed working path updated safely; versioned releases preserved.
 endlocal

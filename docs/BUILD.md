@@ -1,13 +1,15 @@
 # Building the portable viewer
 
-Renderer source requires bundling; Electron then packages it into a Windows x64 portable directory. No C++ compiler is needed.
+Renderer source requires bundling; Electron packages it into a Windows x64 portable directory. No C++ compiler is needed.
 
-Install Node.js/npm. For a first checkout run `npm ci` with the committed lockfile, then `build.bat` from any directory. The batch runs unit tests, renderer build and portable packaging, stopping on any failure.
+First checkout: install Node.js/npm and run npm ci, then build.bat. The batch tests, bundles and packages, stopping on failure.
 
-Set a NEW display version in `src/version.cjs` before a new build. Output is `release/3wa_3dviewer-<VERSION>-win-x64/`. Existing destinations are refused, never overwritten. The script does not start or replace an installed viewer, alter MCP registration or change file associations. A failed partial output is retained for inspection.
+The normal build output is always release/3wa_3dviewer-working-win-x64/3wa_3dviewer.exe. Update src/version.cjs for each new version; the directory stays fixed. Close that working viewer and any MCP server using that directory before building.
 
-The owner's release policy is one current version. Before removing/moving older outputs, verify running processes, MCP/shortcut references and `portable-data`. Do not delete user data. This batch intentionally does not auto-clean unverified older installations. After reviewing them, move obsolete outputs to a recoverable archive outside release, or explicitly approve deletion.
+Packaging first creates a separate staged directory. A running-process check and build lock prevent normal overlapping builds. Only after packaging succeeds does it copy portable-data, move the complete previous working directory to the sibling 3wa_3dviewer-build-archive/, and promote the staged directory. If promotion fails it attempts to restore the old directory. Nothing in the old directory is permanently deleted. User-added files other than portable-data remain in the archive, not the new package.
 
-Launch the new folder's `3wa_3dviewer.exe` manually. Keep the full folder together. MCP uses Node with `resources/app/scripts/mcp-server.cjs` and explicit model/reference roots; building does not switch existing MCP registrations. See REFERENCE-LAYERS.md and mcp-capture.md.
+Do not launch the working viewer during packaging. On a locked file, permission error or unexpected failure, retain the staging/archive directories for inspection. A stale release/.working-build.lock after forced termination must only be removed after confirming no build is running.
 
-`npm start` is development mode; run `npm run build` after renderer source edits. Generated web/, release/, qa/ and node_modules/ are excluded from Git. Never commit private reference images, capture artifacts or local MCP configurations.
+Existing version-named releases, shortcuts, MCP configuration and file associations are untouched. The archive is recoverable and may grow; review user data and references before cleaning it. npm run package still creates a separate version-named release and refuses overwrite.
+
+MCP can use the fixed folder's resources/app/scripts/mcp-server.cjs with existing explicit allowed roots. Building does not update registrations. See REFERENCE-LAYERS.md and mcp-capture.md. Generated web/, release/, qa/ and node_modules/ are excluded from Git.

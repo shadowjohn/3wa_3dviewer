@@ -1,4 +1,4 @@
-const DISPLAY_VERSION='20261117.001';
+const DISPLAY_VERSION='20261117.002';
 const REPO='shadowjohn/3wa_3dviewer';
 function parseVersion(value){const match=/^v?(\d{8})\.(\d{3})$/.exec(value||'');return match?[Number(match[1]),Number(match[2])]:null;}
 function compareVersions(a,b){const x=parseVersion(a),y=parseVersion(b);if(!x||!y)throw Error('版本格式無效。');return x[0]-y[0]||x[1]-y[1];}
