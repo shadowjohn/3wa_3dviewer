@@ -1,5 +1,6 @@
 const {contextBridge,ipcRenderer,webUtils}=require('electron');
 contextBridge.exposeInMainWorld('viewer',{
+ captureFrame:view=>ipcRenderer.invoke('capture-frame',view),captureFinish:report=>ipcRenderer.invoke('capture-finish',report),
  initial:()=>ipcRenderer.invoke('initial'),open:()=>ipcRenderer.invoke('open'),
  drop:file=>ipcRenderer.invoke('drop',webUtils.getPathForFile(file)),snapshot:()=>ipcRenderer.invoke('snapshot'),
  config:()=>ipcRenderer.invoke('config'),checkUpdates:()=>ipcRenderer.invoke('check-updates'),releasePage:()=>ipcRenderer.invoke('release-page'),

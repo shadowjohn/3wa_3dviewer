@@ -1,3 +1,4 @@
+import {evidenceImages} from './capture-evidence.mjs';
 import {buildTileset,updateTileset} from './tileset-renderer.mjs';
 import {parseMesh} from './mesh-loaders.mjs';
 import * as THREE from 'three';
@@ -74,6 +75,27 @@ window.addEventListener('dragover',e=>{e.preventDefault();document.body.classLis
 $('updates').onclick=async()=>{const b=$('updates');b.disabled=true;b.textContent='檢查中…';$('updateProgress').hidden=false;$('updateResult').hidden=true;$('aboutDialog').setAttribute('aria-busy','true');$('release').hidden=true;try{const r=await window.viewer.checkUpdates();$('status').textContent=r.error||(r.version?(r.available?'有新版本 '+r.version+'，可開啟版本頁自行下載。':'目前已是最新穩定版 '+r.current):'目前尚無已發布的穩定版本。');$('release').hidden=!r.url;}catch(e){$('status').textContent='更新查詢失敗；離線瀏覽不受影響。';}finally{$('updateProgress').hidden=true;$('aboutDialog').setAttribute('aria-busy','false');$('updateResult').textContent=$('status').textContent;$('updateResult').hidden=false;b.disabled=false;b.textContent='檢查更新';}};
 $('release').onclick=()=>action(()=>window.viewer.releasePage());
 async function boot(){const cfg=await window.viewer.config();$('version').textContent='3wa_3dviewer · '+cfg.version+' · VRM preview';try{
- await load(await window.viewer.initial());if(cfg.smoke){const memorySamples=[];for(let i=0;i<3;i++){await load(await window.viewer.initial());renderer.render(scene,camera);memorySamples.push({...renderer.info.memory});}const stableMemory=memorySamples.slice(1).every(m=>m.textures===memorySamples[0].textures&&m.geometries===memorySamples[0].geometries);await new Promise(r=>setTimeout(r,800));const before=camera.position.clone();frame(new THREE.Vector3(-1,.2,1));const orbitMoved=camera.position.distanceTo(before)>0;camera.position.lerp(controls.target,.15);controls.update();const zoomChanged=camera.position.distanceTo(before)>0;$('material').value='clay';setMaterial();renderer.render(scene,camera);$('material').value='original';setMaterial();frame();await new Promise(r=>setTimeout(r,500));await window.viewer.smokeFinish({ok:!!model&&frames>2&&orbitMoved&&zoomChanged&&stableMemory,stableMemory,memorySamples,version:cfg.version,meta,frames,orbitMoved,zoomChanged,renderer:renderer.info.render,memory:renderer.info.memory});}
- }catch(e){error(e);if(cfg.smoke)await window.viewer.smokeFinish({ok:false,error:e.message});}}
+ await load(await window.viewer.initial());if(cfg.capture){
+ for(const el of document.querySelectorAll('header,aside'))el.style.visibility='hidden';
+ viewport.style.cssText='position:fixed;inset:0;width:100vw;height:100vh;z-index:9999';
+ $('animation').checked=false;$('rotate').checked=false;controls.enableDamping=false;controls.autoRotate=false;
+ $('material').value=cfg.material;setMaterial();scene.background.set(cfg.background==='light'?'#e8edf2':'#19212c');
+ await new Promise(r=>setTimeout(r,200));
+ camera.aspect=cfg.width/cfg.height;renderer.setPixelRatio(1);renderer.setSize(cfg.width,cfg.height);
+ let reference=null;if(cfg.referenceData){reference=new Image();reference.src=cfg.referenceData;await reference.decode();}
+ const box=bounds(),size=box.getSize(new THREE.Vector3()),poses=[];
+ for(const view of cfg.views){
+  camera.fov=45;
+  let direction=new THREE.Vector3(...(dirs[view]||dirs.iso));
+  if(view==='custom'){const a=THREE.MathUtils.degToRad(cfg.camera.azimuth),e=THREE.MathUtils.degToRad(cfg.camera.elevation);direction.set(Math.sin(a)*Math.cos(e),Math.sin(e),Math.cos(a)*Math.cos(e));camera.fov=cfg.camera.fov;}
+  if(cfg.forwardAxis==='-Z'){direction.x*=-1;direction.z*=-1;}frame(direction);
+  if(view==='custom'){const displacement=camera.position.clone().sub(controls.target).multiplyScalar(cfg.camera.distanceScale),offset=new THREE.Vector3(...cfg.camera.targetOffset).multiplyScalar(radius);controls.target.add(offset);controls.maxDistance=Math.max(radius*100,displacement.length()*1.1);camera.position.copy(controls.target).add(displacement);controls.update();}
+  camera.updateMatrixWorld(true);renderer.render(scene,camera);
+  const images=evidenceImages(renderer.domElement,cfg,reference);
+  const pose={view,position:camera.position.toArray(),target:controls.target.toArray(),fov:camera.fov,near:camera.near,far:camera.far,aspect:camera.aspect,matrixWorld:camera.matrixWorld.toArray(),projectionMatrix:camera.projectionMatrix.toArray()};poses.push(pose);
+  await window.viewer.captureFrame({view,images});
+ }
+ await window.viewer.captureFinish({ok:true,meta,frames,forwardAxis:cfg.forwardAxis,worldBounds:{min:box.min.toArray(),max:box.max.toArray(),size:size.toArray(),units:'model units; not verified real-world measurement'},poses});return;
+ }if(cfg.smoke){const memorySamples=[];for(let i=0;i<3;i++){await load(await window.viewer.initial());renderer.render(scene,camera);memorySamples.push({...renderer.info.memory});}const stableMemory=memorySamples.slice(1).every(m=>m.textures===memorySamples[0].textures&&m.geometries===memorySamples[0].geometries);await new Promise(r=>setTimeout(r,800));const before=camera.position.clone();frame(new THREE.Vector3(-1,.2,1));const orbitMoved=camera.position.distanceTo(before)>0;camera.position.lerp(controls.target,.15);controls.update();const zoomChanged=camera.position.distanceTo(before)>0;$('material').value='clay';setMaterial();renderer.render(scene,camera);$('material').value='original';setMaterial();frame();await new Promise(r=>setTimeout(r,500));await window.viewer.smokeFinish({ok:!!model&&frames>2&&orbitMoved&&zoomChanged&&stableMemory,stableMemory,memorySamples,version:cfg.version,meta,frames,orbitMoved,zoomChanged,renderer:renderer.info.render,memory:renderer.info.memory});}
+ }catch(e){error(e);if(cfg.capture)await window.viewer.captureFinish({ok:false,error:e.message});if(cfg.smoke)await window.viewer.smokeFinish({ok:false,error:e.message});}}
 boot();

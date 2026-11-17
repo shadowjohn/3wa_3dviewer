@@ -9,7 +9,8 @@ fs.mkdirSync(out,{recursive:true});fs.cpSync('node_modules/electron/dist',out,{r
 fs.copyFileSync(path.join(out,'electron.exe'),path.join(out,'3wa_3dviewer.exe'));fs.unlinkSync(path.join(out,'electron.exe'));
 cp.execFileSync(process.execPath,[path.join(__dirname,'brand-exe.mjs'),path.join(out,'3wa_3dviewer.exe'),DISPLAY_VERSION]);
 const app=path.join(out,'resources/app');fs.mkdirSync(app,{recursive:true});for(const f of ['src','web'])fs.cpSync(f,path.join(app,f),{recursive:true});
-fs.writeFileSync(path.join(app,'package.json'),JSON.stringify({name:pkg.name,version:pkg.version,main:pkg.main,productName:'3wa_3dviewer'},null,2));
+fs.writeFileSync(path.join(app,'package.json'),JSON.stringify({name:pkg.name,version:pkg.version,main:'src/packaged-entry.cjs',productName:'3wa_3dviewer'},null,2));
+fs.mkdirSync(path.join(app,'scripts'),{recursive:true});fs.copyFileSync('scripts/mcp-server.cjs',path.join(app,'scripts/mcp-server.cjs'));
 for(const f of ['README.md','LICENSE','Register-OpenWith.ps1','Unregister-OpenWith.ps1'])if(fs.existsSync(f))fs.copyFileSync(f,path.join(out,f));
-fs.mkdirSync(path.join(out,'docs'),{recursive:true});for(const f of ['VALIDATION.md','RELEASE.md','VRM.md','SETTINGS.md','TASKS.md'])if(fs.existsSync(path.join('docs',f)))fs.copyFileSync(path.join('docs',f),path.join(out,'docs',f));
+fs.mkdirSync(path.join(out,'docs'),{recursive:true});for(const f of ['VALIDATION.md','RELEASE.md','VRM.md','SETTINGS.md','TASKS.md','mcp-capture.md'])if(fs.existsSync(path.join('docs',f)))fs.copyFileSync(path.join('docs',f),path.join(out,'docs',f));
 console.log(out);
