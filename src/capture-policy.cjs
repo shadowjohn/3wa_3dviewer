@@ -1,4 +1,5 @@
 const fs=require('node:fs/promises'),path=require('node:path');
+const {modelNotes}=require('./model-notes-policy.cjs'),{captions,captionTime}=require('./timed-captions.cjs');
 const VIEWS=['front','back','left','right','top','iso'];
 async function allowedFile(file,roots,extensions,maxBytes){
  if(typeof file!=='string'||!path.isAbsolute(file)||/^\\\\|^\/\//.test(file)||!extensions.includes(path.extname(file).toLowerCase()))throw Error('Only absolute local '+extensions.join('/')+' paths are accepted');
@@ -21,8 +22,8 @@ function options(a){
  return {views,width,height,forwardAxis,camera,grid,crop,background,material,returnImages,...(a.expectedModelHash?{expectedModelHash:a.expectedModelHash}:{}),...(a.referenceNote?{referenceNote:a.referenceNote}:{})};
 }
 async function validateRequest(a,roots,referenceRoots=[]){
- if(!a||Object.keys(a).some(k=>!['modelPath','views','width','height','forwardAxis','camera','grid','crop','referencePath','referenceNote','expectedModelHash','background','material','returnImages','referenceLayers','referenceMode','selectedReference'].includes(k)))throw Error('Unknown capture argument');
- const modelPath=await allowedFile(a.modelPath,roots,['.glb','.vrm'],256*1024**2);const out={modelPath,...options(a)};
+ if(!a||Object.keys(a).some(k=>!['modelPath','views','width','height','forwardAxis','camera','grid','crop','referencePath','referenceNote','expectedModelHash','background','material','returnImages','referenceLayers','referenceMode','selectedReference','notes','captions','captionTime'].includes(k)))throw Error('Unknown capture argument');
+ const modelPath=await allowedFile(a.modelPath,roots,['.glb','.vrm'],256*1024**2);const out={modelPath,...options(a),notes:modelNotes(a.notes),captions:captions(a.captions),captionTime:captionTime(a.captionTime)};
  if(a.referencePath!==undefined)out.referencePath=await allowedFile(a.referencePath,referenceRoots,['.png','.jpg','.jpeg'],16*1024**2);if(a.referenceLayers!==undefined){if(!Array.isArray(a.referenceLayers)||!a.referenceLayers.length||a.referenceLayers.length>8)throw Error('Reference layers limit: 8');const session=require('./media-sessions.cjs').createSessions();let total=0;out.referenceLayers=[];for(const l of a.referenceLayers){if(!l||Object.keys(l).some(k=>!['path','visible','opacity','scale','x','y','time'].includes(k)))throw Error('Invalid reference layer');const file=await allowedFile(l.path,referenceRoots,['.png','.jpg','.jpeg','.webp','.gif','.webm'],16*1024**2);total+=(await fs.stat(file)).size;if(total>64*1024**2)throw Error('Reference total limit: 64 MB');const st=session.create([{path:file}]);session.update(st.id,{layer:0,...Object.fromEntries(Object.entries(l).filter(([k])=>k!=='path'))});out.referenceLayers.push({...st.layers[0]});session.close(st.id);}out.referenceMode=a.referenceMode??'single';out.selectedReference=a.selectedReference??0;if(!['single','overlay'].includes(out.referenceMode)||!Number.isInteger(out.selectedReference)||!out.referenceLayers[out.selectedReference])throw Error('Invalid reference selection');}return out;
 }
 module.exports={validateRequest,allowedFile,options,VIEWS};

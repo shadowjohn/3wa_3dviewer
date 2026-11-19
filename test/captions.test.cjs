@@ -1,0 +1,6 @@
+const test=require('node:test'),assert=require('node:assert/strict');
+const {captions,captionAt,captionTime}=require('../src/timed-captions.cjs');
+const {options,frameTime}=require('../src/turntable-policy.cjs');
+test('caption windows are start-inclusive and end-exclusive',()=>{const c=captions([{text:' second ',start:1,end:2},{text:'first',start:.5,end:1}],2);assert.equal(c[1].text,'second');assert.equal(captionAt(c,.49),null);assert.equal(captionAt(c,.5),'first');assert.equal(captionAt(c,1),'second');assert.equal(captionAt(c,2),null);});
+test('caption policies reject overlap, invalid windows, oversized text and invalid seek',()=>{for(const value of [[{text:'x',start:1,end:1}],[{text:'x',start:-1,end:2}],[{text:'x',start:0,end:3}],[{text:'x'.repeat(81),start:0,end:1}],[{text:'x',start:0,end:1},{text:'y',start:.5,end:2}],[{text:'x',start:0,end:1,html:true}]])assert.throws(()=>captions(value,2));assert.throws(()=>captionTime(21));assert.equal(captionTime(),0);});
+test('caption timing uses the actual encoded timeline and preserves MP4/GIF defaults',()=>{const video=options({seconds:2,captions:[{text:'valid',start:.5,end:1.2}]});assert.equal(frameTime(15,video),.5);assert.equal(video.format,'mp4');const gif=options({seconds:2,format:'gif'});assert.equal(frameTime(1,gif),.07);assert.equal(frameTime(29,gif),1.93);assert.throws(()=>frameTime(30,gif));});

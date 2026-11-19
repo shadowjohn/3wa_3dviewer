@@ -1,5 +1,10 @@
 import {referenceLayers} from './reference-layers.mjs';
 import {evidenceImages} from './capture-evidence.mjs';
+import turntablePolicy from './turntable-policy.cjs';
+import modelNotesPolicy from './model-notes-policy.cjs';
+import pathPolicy from './camera-path.cjs';
+import captionsPolicy from './timed-captions.cjs';
+import {pickModelNote,projectedModelNotes,drawModelNotes,drawTimedCaption} from './model-notes.mjs';
 import {buildTileset,updateTileset} from './tileset-renderer.mjs';
 import {parseMesh} from './mesh-loaders.mjs';
 import * as THREE from 'three';
@@ -12,12 +17,13 @@ import {KTX2Loader} from 'three/addons/loaders/KTX2Loader.js';
 import {MeshoptDecoder} from 'three/addons/libs/meshopt_decoder.module.js';
 import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
 const $=id=>document.getElementById(id),viewport=$('viewport');
-let vrm=null,tilesRuntime=null;
+let vrm=null,tilesRuntime=null,turntableRender=false,notes=[],picking=false,noteTick=0;
 let renderer,controls,model,grid,mixer,seq=0,radius=1,meta,frames=0,animationCount=0,draco,ktx;
 const scene=new THREE.Scene();scene.background=new THREE.Color('#19212c');
 const avatarLight=new THREE.DirectionalLight(0xffffff,1.2);avatarLight.position.set(1,2,3);avatarLight.visible=false;scene.add(avatarLight);
 const camera=new THREE.PerspectiveCamera(45,1,.01,1000);camera.position.set(4,3,5);
 const container=new THREE.Group();scene.add(container);
+const noteOverlay=document.createElement('canvas');noteOverlay.id='modelNoteOverlay';noteOverlay.hidden=true;noteOverlay.setAttribute('aria-hidden','true');viewport.append(noteOverlay);
 const timer=new THREE.Timer();timer.connect(document);const materials=new Map();
 const clay=new THREE.MeshStandardMaterial({color:0xb5bfc9,roughness:.65});
 const wire=new THREE.MeshBasicMaterial({color:0x67dfc3,wireframe:true});
@@ -51,7 +57,7 @@ async function load(payload){
  let meshes=0,triangles=0,points=0;gltf.scene.traverse(o=>{if(o.isPoints)points+=o.geometry.attributes.position?.count||0;if(o.isMesh){meshes++;triangles+=(o.geometry.index?.count||o.geometry.attributes.position?.count||0)/3;}});
  if(!meshes&&!points){dispose(gltf.scene);throw Error('模型沒有可顯示的網格。');}
  const box=new THREE.Box3().setFromObject(gltf.scene);if(box.isEmpty()||![...box.min.toArray(),...box.max.toArray()].every(Number.isFinite)){dispose(gltf.scene);throw Error('模型座標無效。');}
- if(mixer){mixer.stopAllAction();mixer.uncacheRoot(model);}if(model)container.remove(model);dispose(model);materials.clear();tilesRuntime=payload.kind==='tileset'?gltf:null;vrm=nextVrm||null;avatarLight.visible=!!vrm;model=gltf.scene;container.rotation.set(0,0,0);container.add(model);model.traverse(o=>{if(o.isMesh)materials.set(o,o.material);});
+ if(mixer){mixer.stopAllAction();mixer.uncacheRoot(model);}if(model)container.remove(model);dispose(model);materials.clear();notes=[];endNotePick();$('noteText').value='';noteStatus();drawLiveNotes();tilesRuntime=payload.kind==='tileset'?gltf:null;vrm=nextVrm||null;avatarLight.visible=!!vrm;model=gltf.scene;container.rotation.set(0,0,0);container.add(model);model.traverse(o=>{if(o.isMesh)materials.set(o,o.material);});
  animationCount=gltf.animations.length;mixer=animationCount?new THREE.AnimationMixer(model):null;gltf.animations.forEach(a=>mixer.clipAction(a).play());
  meta={name:payload.name,bytes:payload.size,meshes,points,triangles:Math.round(triangles),extensions:payload.extensions,animations:animationCount,note:payload.note,vrm:payload.avatar?{...payload.avatar,mtoonMaterials:vrm.materials.filter(m=>m.isMToonMaterial).length}:null};
  info([['檔案',payload.name],...(payload.avatar?[['VRM',payload.avatar.version],['角色',payload.avatar.name],['作者',payload.avatar.authors]]:[]),['檔案大小',(payload.size/1048576).toFixed(2)+' MB'],['點數',points.toLocaleString()],['三角面',Math.round(triangles).toLocaleString()],['網格 / 動畫',meshes+' / '+animationCount],['擴充',payload.extensions.join(', ')||(payload.kind==='tileset'?'3D Tiles local preview':isMesh?payload.kind.toUpperCase():'標準 glTF 2.0')],['座標 / 資源',payload.note||'glTF 本地座標']]);
@@ -64,8 +70,8 @@ try{
  controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.dampingFactor=.08;
  const pmrem=new THREE.PMREMGenerator(renderer),room=new RoomEnvironment();scene.environment=pmrem.fromScene(room,.04).texture;room.dispose();pmrem.dispose();scene.add(new THREE.HemisphereLight(0xddeeff,0x444455,.6));
  draco=new DRACOLoader().setDecoderPath('decoders/draco/');draco.setWorkerLimit(2);ktx=new KTX2Loader().setTranscoderPath('decoders/basis/').detectSupport(renderer);ktx.setWorkerLimit(2);
- new ResizeObserver(()=>{camera.aspect=viewport.clientWidth/viewport.clientHeight;camera.updateProjectionMatrix();renderer.setSize(viewport.clientWidth,viewport.clientHeight);}).observe(viewport);
- renderer.setAnimationLoop(()=>{timer.update();const dt=Math.min(timer.getDelta(),.1);if($('animation').checked){if(mixer)mixer.update(dt);vrm?.update(dt);}controls.autoRotate=$('rotate').checked;controls.update(dt);if(tilesRuntime){container.updateMatrixWorld(true);updateTileset(tilesRuntime.root,camera,viewport.clientHeight,16,container.matrixWorld);}renderer.render(scene,camera);frames++;});
+ new ResizeObserver(()=>{if(turntableRender)return;camera.aspect=viewport.clientWidth/viewport.clientHeight;camera.updateProjectionMatrix();renderer.setSize(viewport.clientWidth,viewport.clientHeight);}).observe(viewport);
+ renderer.setAnimationLoop(()=>{if(turntableRender)return;timer.update();const dt=Math.min(timer.getDelta(),.1);if($('animation').checked){if(mixer)mixer.update(dt);vrm?.update(dt);}controls.autoRotate=$('rotate').checked;controls.update(dt);if(tilesRuntime){container.updateMatrixWorld(true);updateTileset(tilesRuntime.root,camera,viewport.clientHeight,16,container.matrixWorld);}renderer.render(scene,camera);if(notes.length&&performance.now()-noteTick>65)drawLiveNotes();frames++;});
 }catch(e){error(e);}
 const references=referenceLayers({viewport,canvas:renderer?.domElement,getCamera:()=>{camera.updateMatrixWorld(true);return {position:camera.position.toArray(),target:controls.target.toArray(),fov:camera.fov,near:camera.near,far:camera.far,aspect:camera.aspect,matrixWorld:camera.matrixWorld.toArray(),projectionMatrix:camera.projectionMatrix.toArray()};},setCamera:p=>{controls.enableDamping=false;controls.autoRotate=false;$('rotate').checked=false;camera.position.fromArray(p.position);controls.target.fromArray(p.target);camera.fov=p.fov;camera.near=p.near;camera.far=p.far;camera.updateProjectionMatrix();controls.update();camera.updateMatrixWorld(true);controls.enableDamping=true;},onModelVisible:visible=>{container.visible=visible;},status:text=>{$('status').textContent=text;}});
 async function action(fn){try{await fn();}catch(e){error(e);}}
@@ -76,8 +82,138 @@ window.addEventListener('keydown',e=>{if(e.ctrlKey&&e.key.toLowerCase()==='o'){e
 window.addEventListener('dragover',e=>{e.preventDefault();document.body.classList.add('drag');});window.addEventListener('dragleave',e=>{if(!e.relatedTarget)document.body.classList.remove('drag');});window.addEventListener('drop',e=>{e.preventDefault();document.body.classList.remove('drag');const files=Array.from(e.dataTransfer.files);const media=files.filter(f=>references.isMedia(f));if(media.length)references.addFiles(media);const f=files.find(f=>!references.isMedia(f));if(f)action(async()=>load(await window.viewer.drop(f)));});window.viewer.onOpen(p=>action(()=>load(p)));
 $('updates').onclick=async()=>{const b=$('updates');b.disabled=true;b.textContent='檢查中…';$('updateProgress').hidden=false;$('updateResult').hidden=true;$('aboutDialog').setAttribute('aria-busy','true');$('release').hidden=true;try{const r=await window.viewer.checkUpdates();$('status').textContent=r.error||(r.version?(r.available?'有新版本 '+r.version+'，可開啟版本頁自行下載。':'目前已是最新穩定版 '+r.current):'目前尚無已發布的穩定版本。');$('release').hidden=!r.url;}catch(e){$('status').textContent='更新查詢失敗；離線瀏覽不受影響。';}finally{$('updateProgress').hidden=true;$('aboutDialog').setAttribute('aria-busy','false');$('updateResult').textContent=$('status').textContent;$('updateResult').hidden=false;b.disabled=false;b.textContent='檢查更新';}};
 $('release').onclick=()=>action(()=>window.viewer.releasePage());
+function noteStatus(message){
+ $('noteStatus').textContent=message||(notes.length?notes.length+'／4 則註記 · 匯出時會保留':'最多 4 則；會跟著模型，並隨遮蔽隱藏。');
+ $('noteUndo').disabled=!notes.length;
+}
+function endNotePick(){if(picking){picking=false;controls.enabled=true;renderer.domElement.classList.remove('note-picking');}}
+function drawLiveNotes(){
+ noteTick=performance.now();noteOverlay.hidden=!notes.length;
+ if(!notes.length||!model)return;
+ const width=viewport.clientWidth,height=viewport.clientHeight;
+ if(noteOverlay.width!==width)noteOverlay.width=width;if(noteOverlay.height!==height)noteOverlay.height=height;
+ const ctx=noteOverlay.getContext('2d');ctx.clearRect(0,0,width,height);
+ drawModelNotes(ctx,projectedModelNotes(notes,model,camera,radius),{x:0,y:0,width,height});
+}
+$('notePick').onclick=()=>{
+ if(!model||!meta?.name?.toLowerCase().endsWith('.glb')){noteStatus('請先開啟 GLB。');return;}
+ try{modelNotesPolicy.modelNotes([...notes,{text:$('noteText').value,point:[0,0,0]}]);}
+ catch(e){noteStatus(e.message);return;}
+ picking=true;controls.enabled=false;renderer.domElement.classList.add('note-picking');noteStatus('請點選 GLB 表面；Esc 取消。');
+};
+$('noteUndo').onclick=()=>{endNotePick();notes=notes.slice(0,-1);noteStatus();drawLiveNotes();};
+window.addEventListener('keydown',e=>{if(e.key==='Escape'&&picking){endNotePick();noteStatus();}});
+renderer?.domElement.addEventListener('click',e=>{
+ if(!picking)return;
+ const area=renderer.domElement.getBoundingClientRect(),x=(e.clientX-area.left)/area.width*2-1,y=1-(e.clientY-area.top)/area.height*2;
+ const point=pickModelNote(x,y,model,camera);
+ if(!point){noteStatus('沒有點到模型表面，請再試一次；Esc 取消。');return;}
+ try{notes=modelNotesPolicy.modelNotes([...notes,{text:$('noteText').value,point}]);endNotePick();$('noteText').value='';noteStatus();drawLiveNotes();}
+ catch(error){endNotePick();noteStatus(error.message);}
+});
+function noteCanvas(width,height){
+ const c=document.createElement('canvas');c.width=width;c.height=height;return c;
+}
+function compositeNotes(c,overlays,caption=null){
+ const ctx=c.getContext('2d');ctx.drawImage(renderer.domElement,0,0);
+ for(const {notes,viewport} of overlays)drawModelNotes(ctx,notes,viewport);
+ drawTimedCaption(ctx,caption,c.width,c.height);return c;
+}
+async function renderTurntable(cfg){
+ const job=cfg.turntable;turntableRender=true;renderer.setAnimationLoop(null);
+ controls.enabled=false;controls.autoRotate=false;controls.enableDamping=false;
+ renderer.setPixelRatio(1);renderer.setSize(job.width,job.height,false);
+ renderer.toneMappingExposure=job.exposure;scene.background.set(job.background);
+ if(grid)grid.visible=false;
+ $('material').value=job.material;setMaterial();
+ container.quaternion.fromArray(job.orientation).normalize();
+ const holders=[container],roots=[model];
+ if(cfg.secondModel){
+  const p=await window.viewer.turntableSecond(),a=p.data;
+  const manager=new THREE.LoadingManager();manager.setURLModifier(url=>{if(/^(data:|blob:)/.test(url))return url;throw Error('External model resources are unavailable in offline recording.');});
+  const loader=new GLTFLoader(manager).setDRACOLoader(draco).setKTX2Loader(ktx).setMeshoptDecoder(MeshoptDecoder);
+  const gltf=await loader.parseAsync(a.buffer.slice(a.byteOffset,a.byteOffset+a.byteLength),'');
+  const holder=new THREE.Group();holder.quaternion.copy(container.quaternion);holder.add(gltf.scene);
+  if(job.material!=='original')gltf.scene.traverse(o=>{if(o.isMesh)o.material=job.material==='clay'?clay:wire;});
+  scene.add(holder);holders.push(holder);roots.push(gltf.scene);
+ }
+ const spheres=holders.map(holder=>{
+  holder.updateMatrixWorld(true);const box=new THREE.Box3().setFromObject(holder);
+  if(box.isEmpty()||![...box.min.toArray(),...box.max.toArray()].every(Number.isFinite))throw Error('Invalid model bounds for rotation recording.');
+  return box.getBoundingSphere(new THREE.Sphere());
+ });
+ const sharedRadius=Math.max(.001,...spheres.map(s=>s.radius)),pane=job.width/holders.length;
+ const v=THREE.MathUtils.degToRad(job.fov/2),h=Math.atan(Math.tan(v)*pane/job.height);
+ const distance=sharedRadius/Math.sin(Math.min(v,h))*1.15;
+ const view=new THREE.PerspectiveCamera(job.fov,pane/job.height,Math.max(sharedRadius/10000,1e-6),distance+sharedRadius*100);
+ const start=new THREE.Vector3(...job.direction).normalize().multiplyScalar(distance);
+ view.position.copy(start);view.up.set(0,1,0);view.lookAt(0,0,0);
+ const initial=view.quaternion.clone();
+ const axis=job.axis==='vertical'?new THREE.Vector3(1,0,0).applyQuaternion(initial):new THREE.Vector3(0,1,0);
+ const motion=new THREE.Quaternion(),offset=new THREE.Vector3(),aim=new THREE.Vector3(),up=new THREE.Vector3(0,1,0),forward=new THREE.Vector3();
+ const right=new THREE.Vector3(),levelRight=new THREE.Vector3();
+ renderer.autoClear=false;renderer.setScissorTest(true);
+ const annotated=(job.notes.length||job.captions.length)?noteCanvas(job.width,job.height):null;
+ for(let i=0;i<job.frameCount;i++){
+  motion.setFromAxisAngle(axis,turntablePolicy.angleAt(i,job.frameCount));
+  offset.copy(start).applyQuaternion(motion);
+  view.quaternion.copy(motion).multiply(initial);const overlays=[];
+  for(let j=0;j<holders.length;j++){
+   for(let k=0;k<holders.length;k++)holders[k].visible=k===j;
+   if(job.cameraPath){
+    const pose=pathPolicy.poseAt(job.cameraPath,turntablePolicy.frameTime(i,job));
+    // Center plus radius-scaled XYZ in the unrotated viewer axes.
+    view.position.fromArray(pose.position).multiplyScalar(sharedRadius).add(spheres[j].center);
+    aim.fromArray(pose.lookAt).multiplyScalar(sharedRadius).add(spheres[j].center);
+    forward.copy(aim).sub(view.position).normalize();
+    levelRight.crossVectors(forward,up);
+    if(levelRight.lengthSq()>=1e-6)right.copy(levelRight);
+    else{
+     // If looking almost vertically, retain the prior horizontal orientation.
+     right.addScaledVector(forward,-right.dot(forward));
+     if(right.lengthSq()<1e-10)right.crossVectors(forward,new THREE.Vector3(1,0,0));
+    }
+    right.normalize();view.up.crossVectors(right,forward).normalize();view.lookAt(aim);
+    view.fov=pose.fov;view.updateProjectionMatrix();
+   }else view.position.copy(spheres[j].center).add(offset);
+   view.updateMatrixWorld(true);
+   renderer.setViewport(j*pane,0,pane,job.height);renderer.setScissor(j*pane,0,pane,job.height);
+   renderer.setClearColor(scene.background,1);renderer.clear(true,true,true);renderer.render(scene,view);
+   if(job.notes.length)overlays.push({notes:projectedModelNotes(job.notes,roots[j],view,spheres[j].radius,j),viewport:{x:j*pane,y:0,width:pane,height:job.height}});
+  }
+  const caption=captionsPolicy.captionAt(job.captions,turntablePolicy.frameTime(i,job));
+  const image=annotated?compositeNotes(annotated,overlays,caption):renderer.domElement;
+  await window.viewer.turntableFrame(i,image.toDataURL('image/png'));
+ }
+ await window.viewer.captureFinish({ok:true});
+}
+const publicPresetSelect=$('publicE8Preset');
+window.viewer.publicE8Presets?.().then(items=>{
+ for(const item of items)publicPresetSelect.add(new Option(item.label,item.id));
+ $('openPublicICC').disabled=!items.length;
+}).catch(e=>{$('status').textContent=e.message;});
+$('openPublicICC').onclick=()=>window.viewer.openPublicICC(publicPresetSelect.value).catch(e=>{$('status').textContent=e.message;});
+let uiRecording=false;
+$('record').onclick=()=>{const d=$('recordDialog');if(!model||!meta?.name?.toLowerCase().endsWith('.glb')){$('status').textContent='請先開啟要錄影的 GLB 模型。';return;}d.showModal();};
+$('recordStart').onclick=async()=>{
+ if(uiRecording)return;
+ uiRecording=true;$('recordStart').disabled=true;$('recordClose').disabled=true;$('recordCancel').disabled=false;
+ const status=$('recordStatus');status.textContent='選擇輸出位置…';
+ try{
+  const seconds=Number($('recordSeconds').value),captionText=$('captionText').value.trim();
+  const captions=captionText?[{text:captionText,start:Number($('captionStart').value),end:$('captionEnd').value===''?seconds:Number($('captionEnd').value)}]:[];
+  const result=await window.viewer.recordTurntable({
+   compare:$('recordCompare').checked,
+   settings:{seconds,captions,axis:$('recordAxis').value,format:$('recordFormat').value,direction:camera.position.clone().sub(controls.target).normalize().toArray(),fov:camera.fov,orientation:container.quaternion.toArray(),background:$('background').value,material:$('material').value,exposure:renderer.toneMappingExposure,notes}
+  });
+  status.textContent=result?result.format.toUpperCase()+' 已儲存：'+result.file:'未儲存錄影。';
+ }catch(e){status.textContent=e.message;}finally{uiRecording=false;$('recordStart').disabled=false;$('recordClose').disabled=false;$('recordCancel').disabled=true;}
+};
+$('recordDialog').addEventListener('cancel',e=>{if(uiRecording){e.preventDefault();window.viewer.cancelTurntable();}});
+$('recordCancel').onclick=()=>{window.viewer.cancelTurntable().catch(e=>{$('recordStatus').textContent=e.message;});};
+window.viewer.onTurntableProgress(stage=>{if(uiRecording)$('recordStatus').textContent=stage==='render'?'正在逐幀繪製…':'正在編碼輸出…';});
 async function boot(){const cfg=await window.viewer.config();$('version').textContent='3wa_3dviewer · '+cfg.version+' · VRM preview';try{
- await load(await window.viewer.initial());if(cfg.capture){
+ await load(await window.viewer.initial());if(cfg.turntable){await renderTurntable(cfg);return;}if(cfg.capture){
  if(cfg.referencesData?.length){const files=cfg.referencesData.map(r=>new File([Uint8Array.from(atob(r.data),c=>c.charCodeAt(0))],r.name));const result=await references.addFiles(files);if(result.errors.length)throw Error(result.errors.join('; '));await references.configure(cfg.referencesData.map(r=>r.settings),cfg.referenceMode,cfg.selectedReference);}
  for(const el of document.querySelectorAll('header,aside'))el.style.visibility='hidden';
  viewport.style.cssText='position:fixed;inset:0;width:100vw;height:100vh;z-index:9999';
@@ -86,7 +222,7 @@ async function boot(){const cfg=await window.viewer.config();$('version').textCo
  await new Promise(r=>setTimeout(r,200));
  camera.aspect=cfg.width/cfg.height;renderer.setPixelRatio(1);renderer.setSize(cfg.width,cfg.height);
  let reference=null;if(cfg.referenceData){reference=new Image();reference.src=cfg.referenceData;await reference.decode();}
- const box=bounds(),size=box.getSize(new THREE.Vector3()),poses=[];
+ const box=bounds(),size=box.getSize(new THREE.Vector3()),poses=[],caption=captionsPolicy.captionAt(cfg.captions??[],cfg.captionTime??0),noteImage=(cfg.notes?.length||caption)?noteCanvas(cfg.width,cfg.height):null;
  for(const view of cfg.views){
   camera.fov=45;
   let direction=new THREE.Vector3(...(dirs[view]||dirs.iso));
@@ -94,11 +230,12 @@ async function boot(){const cfg=await window.viewer.config();$('version').textCo
   if(cfg.forwardAxis==='-Z'){direction.x*=-1;direction.z*=-1;}frame(direction);
   if(view==='custom'){const displacement=camera.position.clone().sub(controls.target).multiplyScalar(cfg.camera.distanceScale),offset=new THREE.Vector3(...cfg.camera.targetOffset).multiplyScalar(radius);controls.target.add(offset);controls.maxDistance=Math.max(radius*100,displacement.length()*1.1);camera.position.copy(controls.target).add(displacement);controls.update();}
   camera.updateMatrixWorld(true);renderer.render(scene,camera);
-  const images=evidenceImages(renderer.domElement,cfg,reference);if(cfg.referencesData?.length)images.layers=evidenceImages(references.composite(renderer.domElement),cfg,null)[cfg.grid?'grid':'original'];
+  const canvas=noteImage?compositeNotes(noteImage,[{notes:projectedModelNotes(cfg.notes,model,camera,radius),viewport:{x:0,y:0,width:cfg.width,height:cfg.height}}],caption):renderer.domElement;
+  const images=evidenceImages(canvas,cfg,reference);if(cfg.referencesData?.length)images.layers=evidenceImages(references.composite(canvas),cfg,null)[cfg.grid?'grid':'original'];
   const pose={view,position:camera.position.toArray(),target:controls.target.toArray(),fov:camera.fov,near:camera.near,far:camera.far,aspect:camera.aspect,matrixWorld:camera.matrixWorld.toArray(),projectionMatrix:camera.projectionMatrix.toArray()};poses.push(pose);
   await window.viewer.captureFrame({view,images});
  }
  await window.viewer.captureFinish({ok:true,meta,frames,forwardAxis:cfg.forwardAxis,worldBounds:{min:box.min.toArray(),max:box.max.toArray(),size:size.toArray(),units:'model units; not verified real-world measurement'},poses});return;
  }if(cfg.smoke){const memorySamples=[];for(let i=0;i<3;i++){await load(await window.viewer.initial());renderer.render(scene,camera);memorySamples.push({...renderer.info.memory});}const stableMemory=memorySamples.slice(1).every(m=>m.textures===memorySamples[0].textures&&m.geometries===memorySamples[0].geometries);await new Promise(r=>setTimeout(r,800));const before=camera.position.clone();frame(new THREE.Vector3(-1,.2,1));const orbitMoved=camera.position.distanceTo(before)>0;camera.position.lerp(controls.target,.15);controls.update();const zoomChanged=camera.position.distanceTo(before)>0;$('material').value='clay';setMaterial();renderer.render(scene,camera);$('material').value='original';setMaterial();frame();await new Promise(r=>setTimeout(r,500));await window.viewer.smokeFinish({ok:!!model&&frames>2&&orbitMoved&&zoomChanged&&stableMemory,stableMemory,memorySamples,version:cfg.version,meta,frames,orbitMoved,zoomChanged,renderer:renderer.info.render,memory:renderer.info.memory});}
- }catch(e){error(e);if(cfg.capture)await window.viewer.captureFinish({ok:false,error:e.message});if(cfg.smoke)await window.viewer.smokeFinish({ok:false,error:e.message});}}
+ }catch(e){error(e);if(cfg.capture||cfg.turntable)await window.viewer.captureFinish({ok:false,error:e.message});if(cfg.smoke)await window.viewer.smokeFinish({ok:false,error:e.message});}}
 boot();

@@ -3,6 +3,8 @@ dialog{width:min(640px,90vw);max-height:85vh;overflow:auto;background:#192330;co
 dialog a{color:#65dbbe;text-decoration:underline;text-underline-offset:3px}dialog a:hover{color:#b6ffeb}dialog a:focus-visible{outline:2px solid #65dbbe;outline-offset:3px}
 
 #aboutDialog .aboutActions { justify-content: flex-end; }
+#modelNoteOverlay{position:absolute;inset:0;z-index:5;pointer-events:none}#modelNoteOverlay[hidden]{display:none}
+.note-picking{cursor:crosshair}#noteText{display:block;width:100%;margin-top:6px;padding:6px;border:1px solid #3b485c;border-radius:6px;color:inherit;background:#253144}#noteUndo{margin-top:6px}
 
 #updateProgress { width:100%; height:5px; accent-color:#65dbbe; }
 #updateProgress[hidden], #updateResult[hidden] { display:none; }

@@ -17,7 +17,7 @@ const log=(...args)=>{if(smokeFile)require('node:fs').appendFileSync(smokeFile+'
 const base=app.isPackaged?path.dirname(process.execPath):path.resolve(__dirname,'..');
 const cache=smokeFile?path.join(path.dirname(smokeFile),'cache-'+process.pid):path.join(base,'portable-data');
 try{require('node:fs').mkdirSync(cache,{recursive:true});app.setPath('userData',cache);}catch{}
-let win,selected=glbArgument(process.argv.slice(1)),ready=false,loadRequest=0,releaseURL=null;
+let win,selected=glbArgument(process.argv.slice(1)),loadedPath,ready=false,loadRequest=0,releaseURL=null,turntableJob;
 const html=path.join(__dirname,'../web/index.html');
 function trusted(e){return e.sender===win?.webContents&&e.senderFrame?.url===pathToFileURL(html).href;}
 function handle(name,fn){ipcMain.handle(name,(e,...args)=>{if(!trusted(e))throw Error('Unauthorized sender');return fn(...args);});}
@@ -40,13 +40,42 @@ async function model(file){
  else json=validateGlb(bytes);
  const avatar=vrmInfo(json);if(ext==='.vrm'&&!avatar)throw Error('VRM extension missing: this file is not a VRM avatar.');
  if(request!==loadRequest)return null;
- selected=file;win.setTitle(path.basename(file)+' · 3WA 3D Viewer');
+ selected=file;loadedPath=real;win.setTitle(path.basename(file)+' · 3WA 3D Viewer');
  return {name:path.basename(file),size:tileset?.total||stat.size,kind,note,avatar,obj,dae,tileset,data:new Uint8Array(bytes),extensions:json.extensionsUsed||[]};
 }
 handle('initial',()=>selected?model(path.resolve(selected)):null);
 handle('open',async()=>{const r=await dialog.showOpenDialog(win,{filters:[{name:'3D 模型',extensions:SUPPORTED.map(x=>x.slice(1))},{name:'3D Tiles (tileset.json)',extensions:['json']}],properties:['openFile']});return r.canceled?null:model(r.filePaths[0]);});
 handle('drop',file=>model(file));
 handle('snapshot',async()=>{const r=await dialog.showSaveDialog(win,{defaultPath:'model-view.png',filters:[{name:'PNG',extensions:['png']}]});if(r.canceled)return false;await fs.writeFile(r.filePath,(await win.webContents.capturePage()).toPNG());return true;});
+handle('turntable-record',async args=>{
+ if(turntableJob)throw Error('Another recording is already running.');
+ const modelPath=loadedPath;
+ if(!modelPath||path.extname(modelPath).toLowerCase()!=='.glb')throw Error('Open a GLB model first.');
+ if(!args||Object.keys(args).sort().join(',')!=='compare,settings'||typeof args.compare!=='boolean')throw Error('Invalid recording request');
+ const {format}=require('./turntable-policy.cjs').options(args.settings,args.compare);
+ const job=new AbortController();turntableJob=job;
+ const sameWindow=win,closed=()=>job.abort();sameWindow.once('closed',closed);
+ try{
+  let secondPath;
+  if(args.compare){
+   const r=await dialog.showOpenDialog(win,{title:'選擇右側 GLB 模型',filters:[{name:'GLB',extensions:['glb']}],properties:['openFile']});
+   if(r.canceled)return null;
+   secondPath=await fs.realpath(r.filePaths[0]);
+  }
+  if(job.signal.aborted)return null;
+  const prefix=path.basename(modelPath,path.extname(modelPath))+(secondPath?'-compare':'-turntable');
+  const r=await dialog.showSaveDialog(win,{title:'儲存旋轉錄影',defaultPath:prefix+'.'+format,filters:[{name:format.toUpperCase(),extensions:[format]}]});
+  if(r.canceled||job.signal.aborted)return null;
+  return await require('./turntable-job.cjs').exportTurntable({
+   modelPath,secondPath,roots:(secondPath?[modelPath,secondPath]:[modelPath]).map(x=>path.dirname(x)),
+   settings:args.settings,signal:job.signal,output:r.filePath,electronPath:process.execPath,packaged:app.isPackaged,
+   onProgress:stage=>{if(!sameWindow.isDestroyed())sameWindow.webContents.send('turntable-progress',stage);}
+  });
+ }finally{sameWindow.removeListener('closed',closed);if(turntableJob===job)turntableJob=null;}
+});
+handle('turntable-cancel',()=>{turntableJob?.abort();return !!turntableJob;});
+handle('open-public-icc',id=>require('./web-preview.cjs').openDesktop(id));
+handle('public-e8-presets',()=>require('./web-presets.cjs').publicPresets());
 handle('config',()=>({smoke:!!smokeFile,version:DISPLAY_VERSION}));
 handle('association-options',()=>({formats:FORMATS,available:process.platform==='win32'&&app.isPackaged,exe:app.isPackaged?process.execPath:null}));
 handle('association-register',async values=>{
