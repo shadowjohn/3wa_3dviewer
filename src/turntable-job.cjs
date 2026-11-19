@@ -10,11 +10,11 @@ async function encoder(){
  }
  throw Error('Recording requires an existing FFmpeg on PATH (libx264 is also required for MP4). No file was written.');
 }
-function run(command,args,signal,timeout){
+function run(command,args,signal,timeout,{visible=false}={}){
  return new Promise((resolve,reject)=>{
   if(signal?.aborted){reject(Error('Export cancelled'));return;}
   const env={...process.env};delete env.ELECTRON_RUN_AS_NODE;
-  const child=spawn(command,args,{windowsHide:true,stdio:['ignore','ignore','pipe'],env,shell:false});
+  const child=spawn(command,args,{windowsHide:!visible,stdio:['ignore','ignore','pipe'],env,shell:false});
   let err='',expired=false;
   const kill=()=>child.kill(),timer=setTimeout(()=>{expired=true;kill();},timeout);
   signal?.addEventListener('abort',kill,{once:true});if(signal?.aborted)kill();

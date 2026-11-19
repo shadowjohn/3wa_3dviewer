@@ -112,6 +112,10 @@ MCP：`record_model_turntable` 的 `modelPath` 和可選的 `secondModelPath` �
 
 可見視窗與 MCP server 是不同入口。直接啟動 `3wa_3dviewer.exe` 可看模型；stdio MCP 使用已安裝的 Node.js 執行 `resources/app/scripts/mcp-server.cjs`，後面傳入明確允許的模型絕對根目錄。Server 會啟動封裝內的 viewer 進行隔離截圖，portable 不需要開發目錄的 Electron npm 套件。參考照預設禁用，須明確指定 `--reference-root=...`。打開視窗不代表 MCP 已註冊或已出現在 AI 客戶端工具清單。本版尚未發佈 GitHub。
 
+## 場景導演
+
+`record_director_scene` 可將同一場景中的多個 GLB、獨立物件軌跡與各註記時間範圍錄成 MP4。參見 [場景導演](DIRECTOR.md)。
+
 ## Scripted camera path (MCP)
 
 `record_model_camera_path` exports a silent H.264 MP4 for one allowed local GLB. It

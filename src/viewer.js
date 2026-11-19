@@ -3,8 +3,10 @@ import {evidenceImages} from './capture-evidence.mjs';
 import turntablePolicy from './turntable-policy.cjs';
 import modelNotesPolicy from './model-notes-policy.cjs';
 import pathPolicy from './camera-path.cjs';
+import {bindDirectorClip} from './director-animation.mjs';
+import directorPolicy from './director-policy.cjs';
 import captionsPolicy from './timed-captions.cjs';
-import {pickModelNote,projectedModelNotes,drawModelNotes,drawTimedCaption} from './model-notes.mjs';
+import {pickModelNote,projectedModelNotes,visibleNote,drawModelNotes,drawTimedCaption} from './model-notes.mjs';
 import {buildTileset,updateTileset} from './tileset-renderer.mjs';
 import {parseMesh} from './mesh-loaders.mjs';
 import * as THREE from 'three';
@@ -119,6 +121,125 @@ function compositeNotes(c,overlays,caption=null){
  for(const {notes,viewport} of overlays)drawModelNotes(ctx,notes,viewport);
  drawTimedCaption(ctx,caption,c.width,c.height);return c;
 }
+function directorLayout(preview){
+ for(const el of document.querySelectorAll('header,aside,footer'))el.style.visibility='hidden';
+ viewport.style.cssText='position:fixed;inset:0;width:100vw;height:100vh;z-index:9999';
+ $('welcome').hidden=true;$('loading').hidden=true;if(grid)grid.visible=false;
+ if(!preview)return null;
+ const panel=document.createElement('div'),button=document.createElement('button'),seek=document.createElement('input'),clock=document.createElement('span');
+ panel.style.cssText='position:absolute;inset:auto 10px 10px;z-index:10;background:#172132eb;padding:6px;display:flex;gap:10px;align-items:center;border-radius:7px';
+ button.textContent='Pause';button.type='button';seek.type='range';seek.min='0';seek.step='1';seek.style.flex='1';seek.setAttribute('aria-label','Scene frame');clock.setAttribute('aria-live','off');
+ panel.append(button,seek,clock);viewport.append(panel);
+ return {button,seek,clock};
+}
+function directorLighting(plan,groups){
+ if(!plan)return null;
+ const bounds=new THREE.Box3(),v=new THREE.Vector3(),c=new THREE.Vector3(),d=new THREE.Vector3();
+ for(const g of groups){
+  const extent=Math.max(.5,g.envelope);
+  for(const p of (g.o.movement?.map(k=>k.position)??[g.o.position])){
+   c.fromArray(p).add(g.pivot);
+   bounds.expandByPoint(v.copy(c).addScalar(extent));
+   bounds.expandByPoint(v.copy(c).addScalar(-extent));
+  }
+ }
+ const sphere=bounds.getBoundingSphere(new THREE.Sphere()),r=Math.max(1,sphere.radius*1.08),distance=2.25*r;
+ const sun=new THREE.DirectionalLight(0xffffff,1);sun.castShadow=plan.shadows;
+ sun.target.position.copy(sphere.center);scene.add(sun,sun.target);
+ if(plan.shadows){
+  renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFShadowMap;
+  sun.shadow.mapSize.set(1024,1024);sun.shadow.normalBias=r/3200;sun.shadow.bias=-.0001;
+  Object.assign(sun.shadow.camera,{left:-r,right:r,top:r,bottom:-r,near:.01,far:distance+r*1.2});
+  sun.shadow.camera.updateProjectionMatrix();
+  for(const g of groups)g.mesh.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
+ }
+ return t=>{
+  const l=directorPolicy.sampleLight(plan,t);
+  d.fromArray(l.direction).normalize();
+  sun.position.copy(sphere.center).addScaledVector(d,distance);
+  sun.shadow.camera.up.set(0,Math.abs(d.y)>.999999?0:1,Math.abs(d.y)>.999999?1:0);
+  sun.intensity=l.intensity;sun.color.setRGB(...l.rgb.map(v=>v/255),THREE.SRGBColorSpace);
+ };
+}
+async function renderDirector(cfg){
+ const job=cfg.director;turntableRender=true;renderer.setAnimationLoop(null);controls.enabled=false;
+ if(!cfg.preview)renderer.setPixelRatio(1);
+ const panel=directorLayout(cfg.preview),groups=[],models=[],byId=new Map();
+ const manager=new THREE.LoadingManager();manager.setURLModifier(url=>{if(/^(data:|blob:)/.test(url))return url;throw Error('Director GLB must contain its resources.');});
+ const loader=new GLTFLoader(manager).setDRACOLoader(draco).setKTX2Loader(ktx).setMeshoptDecoder(MeshoptDecoder);
+ for(let i=0;i<job.objects.length;i++){
+  const o=job.objects[i],p=await window.viewer.directorModel(i),a=p.data;
+  const g=await loader.parseAsync(a.buffer.slice(a.byteOffset,a.byteOffset+a.byteLength),''),mesh=g.scene,holder=new THREE.Group(),pivot=new THREE.Group();
+  pivot.position.fromArray(o.pivot).negate();pivot.add(mesh);holder.add(pivot);scene.add(holder);holder.updateMatrixWorld(true);
+  const box=new THREE.Box3().setFromObject(mesh),bounded=box.getBoundingSphere(new THREE.Sphere()),r=bounded.radius;
+  if(!Number.isFinite(r)||!(r>0))throw Error('Invalid scene model bounds.');
+  const item={o,mesh,holder,pivot:new THREE.Vector3(...o.pivot),radius:r,envelope:r+bounded.center.length(),axis:o.spin?new THREE.Vector3(...o.spin.axis).normalize():null};
+  item.clip=bindDirectorClip(mesh,g.animations,o.animation,o.id);
+  groups.push(item);models.push(mesh);byId.set(o.id,item);
+ }
+ const light=directorLighting(job.lighting,groups);
+ const view=new THREE.PerspectiveCamera(45,1,.001,1000),aim=new THREE.Vector3(),axisRotation=new THREE.Quaternion(),q=new THREE.Quaternion(),e=new THREE.Euler();
+ const annotated=job.notes.length||job.captions.length;
+ let width=0,height=0;
+ function sample(index,w,h,cameraOverride){
+  if(w!==width||h!==height){
+   renderer.setSize(w,h,!!panel);width=w;height=h;
+   if(panel){noteOverlay.width=w;noteOverlay.height=h;noteOverlay.hidden=!annotated;}
+  }
+  const t=index/job.fps,pose=cameraOverride??directorPolicy.directorCamera(job,index);
+  for(const g of groups){
+   const x=directorPolicy.placement(g.o,t);
+   g.holder.position.fromArray(x.position).add(g.pivot);
+   q.setFromEuler(e.set(...x.rotation.map(THREE.MathUtils.degToRad)));
+   if(g.axis)q.multiply(axisRotation.setFromAxisAngle(g.axis,THREE.MathUtils.degToRad(x.spinDegrees)));
+   g.holder.quaternion.copy(q);g.clip?.(t);
+  }
+  light?.(t);scene.updateMatrixWorld(true);view.position.fromArray(pose.position);aim.fromArray(pose.lookAt);
+  view.up.set(0,Math.abs(view.position.clone().sub(aim).normalize().y)>.999999?0:1,1e-9);
+  view.lookAt(aim);view.aspect=w/h;view.fov=pose.fov;view.updateProjectionMatrix();view.updateMatrixWorld(true);
+  renderer.render(scene,view);
+  const active=directorPolicy.activeNotes(job.notes,t).map(n=>{const g=byId.get(n.object);return visibleNote(n,g.mesh,view,g.radius,models);}).filter(Boolean);
+  return {active,caption:captionsPolicy.captionAt(job.captions,t)};
+ }
+ let blendA,blendB;
+ function blendFrame(i,w,h,blend){
+  if(!blendA||blendA.width!==w||blendA.height!==h){blendA=noteCanvas(w,h);blendB=noteCanvas(w,h);}
+  const viewport={x:0,y:0,width:w,height:h};
+  const collect=(canvas,pose)=>{const {active,caption}=sample(i,w,h,pose);return compositeNotes(canvas,[{notes:active,viewport}],caption);};
+  collect(blendA,blend.previous);collect(blendB);
+  const ctx=blendA.getContext('2d');ctx.save();ctx.globalAlpha=blend.mix;ctx.drawImage(blendB,0,0);ctx.restore();
+  return blendA;
+ }
+ if(panel){
+  let base=performance.now(),index=0,playing=true;
+  panel.seek.max=String(job.frameCount-1);
+  panel.button.onclick=()=>{playing=!playing;base=performance.now()-1000*index/job.fps;panel.button.textContent=playing?'Pause':'Play';};
+  panel.seek.oninput=()=>{index=Number(panel.seek.value);base=performance.now()-1000*index/job.fps;};
+  renderer.setAnimationLoop(now=>{
+   if(playing)index=Math.max(0,Math.floor((now-base)*job.fps/1000))%job.frameCount;
+   const w=viewport.clientWidth,h=viewport.clientHeight;if(!w||!h)return;
+   const blend=directorPolicy.directorBlend(job,index),c=noteOverlay.getContext('2d');
+   if(blend){const img=blendFrame(index,w,h,blend);noteOverlay.hidden=false;c.clearRect(0,0,w,h);c.drawImage(img,0,0);}
+   else{
+    const {active,caption}=sample(index,w,h);noteOverlay.hidden=!annotated;
+    if(annotated){c.clearRect(0,0,w,h);drawModelNotes(c,active,{x:0,y:0,width:w,height:h});drawTimedCaption(c,caption,w,h);}
+   }
+   panel.seek.value=String(index);panel.clock.textContent=(index/job.fps).toFixed(2)+' s';
+  });
+  return;
+ }
+ const board=annotated?noteCanvas(job.width,job.height):null,viewportRect={x:0,y:0,width:job.width,height:job.height};
+ for(let i=0;i<job.frameCount;i++){
+  const blend=directorPolicy.directorBlend(job,i);let frame;
+  if(blend)frame=blendFrame(i,job.width,job.height,blend);
+  else{
+   const {active,caption}=sample(i,job.width,job.height);
+   frame=board?compositeNotes(board,[{notes:active,viewport:viewportRect}],caption):renderer.domElement;
+  }
+  await window.viewer.turntableFrame(i,frame.toDataURL('image/png'));
+ }
+ await window.viewer.captureFinish({ok:true});
+}
 async function renderTurntable(cfg){
  const job=cfg.turntable;turntableRender=true;renderer.setAnimationLoop(null);
  controls.enabled=false;controls.autoRotate=false;controls.enableDamping=false;
@@ -193,6 +314,7 @@ window.viewer.publicE8Presets?.().then(items=>{
  $('openPublicICC').disabled=!items.length;
 }).catch(e=>{$('status').textContent=e.message;});
 $('openPublicICC').onclick=()=>window.viewer.openPublicICC(publicPresetSelect.value).catch(e=>{$('status').textContent=e.message;});
+$('openDirector').onclick=()=>window.viewer.openDirector().catch(e=>{$('status').textContent=e.message;});
 let uiRecording=false;
 $('record').onclick=()=>{const d=$('recordDialog');if(!model||!meta?.name?.toLowerCase().endsWith('.glb')){$('status').textContent='請先開啟要錄影的 GLB 模型。';return;}d.showModal();};
 $('recordStart').onclick=async()=>{
@@ -213,6 +335,7 @@ $('recordDialog').addEventListener('cancel',e=>{if(uiRecording){e.preventDefault
 $('recordCancel').onclick=()=>{window.viewer.cancelTurntable().catch(e=>{$('recordStatus').textContent=e.message;});};
 window.viewer.onTurntableProgress(stage=>{if(uiRecording)$('recordStatus').textContent=stage==='render'?'正在逐幀繪製…':'正在編碼輸出…';});
 async function boot(){const cfg=await window.viewer.config();$('version').textContent='3wa_3dviewer · '+cfg.version+' · VRM preview';try{
+ if(cfg.director){await renderDirector(cfg);return;}
  await load(await window.viewer.initial());if(cfg.turntable){await renderTurntable(cfg);return;}if(cfg.capture){
  if(cfg.referencesData?.length){const files=cfg.referencesData.map(r=>new File([Uint8Array.from(atob(r.data),c=>c.charCodeAt(0))],r.name));const result=await references.addFiles(files);if(result.errors.length)throw Error(result.errors.join('; '));await references.configure(cfg.referencesData.map(r=>r.settings),cfg.referenceMode,cfg.selectedReference);}
  for(const el of document.querySelectorAll('header,aside'))el.style.visibility='hidden';
@@ -237,5 +360,5 @@ async function boot(){const cfg=await window.viewer.config();$('version').textCo
  }
  await window.viewer.captureFinish({ok:true,meta,frames,forwardAxis:cfg.forwardAxis,worldBounds:{min:box.min.toArray(),max:box.max.toArray(),size:size.toArray(),units:'model units; not verified real-world measurement'},poses});return;
  }if(cfg.smoke){const memorySamples=[];for(let i=0;i<3;i++){await load(await window.viewer.initial());renderer.render(scene,camera);memorySamples.push({...renderer.info.memory});}const stableMemory=memorySamples.slice(1).every(m=>m.textures===memorySamples[0].textures&&m.geometries===memorySamples[0].geometries);await new Promise(r=>setTimeout(r,800));const before=camera.position.clone();frame(new THREE.Vector3(-1,.2,1));const orbitMoved=camera.position.distanceTo(before)>0;camera.position.lerp(controls.target,.15);controls.update();const zoomChanged=camera.position.distanceTo(before)>0;$('material').value='clay';setMaterial();renderer.render(scene,camera);$('material').value='original';setMaterial();frame();await new Promise(r=>setTimeout(r,500));await window.viewer.smokeFinish({ok:!!model&&frames>2&&orbitMoved&&zoomChanged&&stableMemory,stableMemory,memorySamples,version:cfg.version,meta,frames,orbitMoved,zoomChanged,renderer:renderer.info.render,memory:renderer.info.memory});}
- }catch(e){error(e);if(cfg.capture||cfg.turntable)await window.viewer.captureFinish({ok:false,error:e.message});if(cfg.smoke)await window.viewer.smokeFinish({ok:false,error:e.message});}}
+ }catch(e){error(e);if(cfg.capture||cfg.turntable||cfg.director)await window.viewer.captureFinish({ok:false,error:e.message});if(cfg.smoke)await window.viewer.smokeFinish({ok:false,error:e.message});}}
 boot();

@@ -1,4 +1,4 @@
-# 3WA 3D Viewer — 20261119.002
+# 3WA 3D Viewer — 20261119.003
 
 Windows x64 portable 模型檢視器。開啟自己的模型，不拿範例取代失敗檔案，不上傳模型。
 
@@ -26,7 +26,7 @@ Windows x64 portable 模型檢視器。開啟自己的模型，不拿範例取�
 
 ## 檢查更新
 
-介面顯示 **20261119.002**。「檢查更新」只有按下時才查詢本專案 GitHub Releases；可開啟官方版本頁，由使用者自行下載/解壓。沒有自動下載、安裝或背景更新。離線/限流/尚無 release 會明確提示，不影響模型檢視。
+介面顯示 **20261119.003**。「檢查更新」只有按下時才查詢本專案 GitHub Releases；可開啟官方版本頁，由使用者自行下載/解壓。沒有自動下載、安裝或背景更新。離線/限流/尚無 release 會明確提示，不影響模型檢視。
 
 ## 開發與發佈
 
@@ -91,6 +91,7 @@ OBJ/STL/PLY 單檔上限256MB、DAE32MB；數量/列表/XML深度另有限制，
 
 - `inspect_model` 檢查允許的本機模型；`capture_model_views` 輸出固定角度 PNG，可加入部位註記及定時字幕。
 - `record_model_turntable` 錄製水平或垂直一圈，支援單一 GLB、左右同尺度比較、MP4 與循環 GIF。例：`{"modelPath":"D:/models/example.glb","axis":"horizontal","seconds":5,"format":"mp4"}`。
+- `record_director_scene` 接受 `{"scenePath":"D:/models/demo.scene.json"}`，把同場景最多四個本機 GLB、獨立動作、定時註記、燈光陰影與鏡頭剪接輸出成 30 fps MP4。參見 [場景導演腳本](docs/DIRECTOR.md)。
 - `record_model_camera_path` 依相機位置、注視點和視野等關鍵影格，輸出單一 GLB 的 MP4；可加入部位註記及定時字幕，不改模型，無碰撞約束。
 - `list_approved_e8_presets` 列出核准圖台；`capture_public_e8_demo` 依 ID 擷取。例如 `{"preset":"icc","seconds":10,"snapshots":3,"motion":"ride"}`。僅支援核准的 ICC 與地下坡道預設，不接受任意網址、腳本或登入，也不包含特製航拍路徑。
 

@@ -4,6 +4,7 @@ contextBridge.exposeInMainWorld('viewer',{
  turntableFrame:(index,data)=>ipcRenderer.invoke('turntable-frame',index,data),turntableSecond:()=>ipcRenderer.invoke('turntable-second'),
  recordTurntable:args=>ipcRenderer.invoke('turntable-record',args),cancelTurntable:()=>ipcRenderer.invoke('turntable-cancel'),
  onTurntableProgress:cb=>ipcRenderer.on('turntable-progress',(_e,stage)=>cb(stage)),
+ directorModel:i=>ipcRenderer.invoke('director-model',i),openDirector:()=>ipcRenderer.invoke('open-director'),
  openPublicICC:id=>ipcRenderer.invoke('open-public-icc',id),publicE8Presets:()=>ipcRenderer.invoke('public-e8-presets'),
  initial:()=>ipcRenderer.invoke('initial'),open:()=>ipcRenderer.invoke('open'),
  drop:file=>ipcRenderer.invoke('drop',webUtils.getPathForFile(file)),snapshot:()=>ipcRenderer.invoke('snapshot'),

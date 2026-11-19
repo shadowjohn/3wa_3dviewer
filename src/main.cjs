@@ -74,6 +74,17 @@ handle('turntable-record',async args=>{
  }finally{sameWindow.removeListener('closed',closed);if(turntableJob===job)turntableJob=null;}
 });
 handle('turntable-cancel',()=>{turntableJob?.abort();return !!turntableJob;});
+let directorPreview;
+handle('open-director',async()=>{
+ if(directorPreview)throw Error('A director preview is already open.');
+ const d=await dialog.showOpenDialog(win,{title:'開啟導演腳本',properties:['openFile'],filters:[{name:'Scene JSON',extensions:['json']}]});
+ if(d.canceled||directorPreview)return;
+ const job=new AbortController(),owner=win;directorPreview=job;const stop=()=>job.abort();owner.once('closed',stop);
+ try{
+  const scenePath=await fs.realpath(d.filePaths[0]);
+  return await require('./director-job.cjs').directorJob({scenePath,roots:[path.dirname(scenePath)],electronPath:process.execPath,packaged:app.isPackaged,signal:job.signal,preview:true});
+ }finally{owner.removeListener('closed',stop);directorPreview=null;}
+});
 handle('open-public-icc',id=>require('./web-preview.cjs').openDesktop(id));
 handle('public-e8-presets',()=>require('./web-presets.cjs').publicPresets());
 handle('config',()=>({smoke:!!smokeFile,version:DISPLAY_VERSION}));

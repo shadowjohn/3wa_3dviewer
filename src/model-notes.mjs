@@ -8,13 +8,13 @@ export function pickModelNote(x,y,model,camera){
  const hit=ray.intersectObject(model,true).find(h=>h.object.isMesh&&displayed(h.object,model));
  return hit?model.worldToLocal(hit.point.clone()).toArray():null;
 }
-export function visibleNote(note,model,camera,radius){
+export function visibleNote(note,model,camera,radius,occluders=[model]){
  if(!model.visible)return null;
  const position=model.localToWorld(new Vector3(...note.point)),origin=camera.getWorldPosition(new Vector3()),direction=position.clone().sub(origin);
  const dist=direction.length(),projected=position.clone().project(camera);
  if(!(dist>0)||[projected.x,projected.y,projected.z].some(v=>!Number.isFinite(v)||v< -1||v>1))return null;
  const tolerance=Math.max(radius*.001,1e-6),ray=new Raycaster(origin,direction.normalize(),0,Math.max(0,dist-tolerance));
- if(ray.intersectObject(model,true).some(h=>h.object.isMesh&&displayed(h.object,model)))return null;
+ if(occluders.some(root=>ray.intersectObject(root,true).some(h=>h.object.isMesh&&displayed(h.object,root))))return null;
  return {x:(projected.x+1)/2,y:(1-projected.y)/2,text:note.text};
 }
 function wrap(ctx,text,limit){
