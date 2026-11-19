@@ -47,7 +47,7 @@ test('reference image dimensions rejected before decoding large images',()=>{
 test('reference root must be independently allowed',async()=>{
  const {validateRequest}=require('../src/capture-policy.cjs');const root=await fs.mkdtemp(path.join(os.tmpdir(),'viewer-ref-'));const modelPath=path.join(root,'a.glb'),referencePath=path.join(root,'a.png');await fs.writeFile(modelPath,'test');await fs.writeFile(referencePath,'test');
  await assert.rejects(validateRequest({modelPath,referencePath},[root]),/root/i);
- assert.equal((await validateRequest({modelPath,referencePath},[root],[root])).referencePath,referencePath);
+ assert.equal((await validateRequest({modelPath,referencePath},[root],[root])).referencePath,await fs.realpath(referencePath));
  await fs.rm(root,{recursive:true});
 });
 test('request queue is bounded and disconnect stops queued work',async()=>{

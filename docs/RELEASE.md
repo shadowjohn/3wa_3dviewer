@@ -1,4 +1,4 @@
-# 3WA 3D Viewer 20261119.001
+# 3WA 3D Viewer 20261119.002
 
 Windows x64 免安裝版。完整解壓後執行 `3wa_3dviewer.exe`；附 ZIP 的 SHA256 校驗檔。
 
