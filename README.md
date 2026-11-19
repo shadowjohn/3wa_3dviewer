@@ -1,4 +1,4 @@
-# 3WA 3D Viewer — 20261111.001
+# 3WA 3D Viewer — 20261119.001
 
 Windows x64 portable 模型檢視器。開啟自己的模型，不拿範例取代失敗檔案，不上傳模型。
 
@@ -26,7 +26,7 @@ Windows x64 portable 模型檢視器。開啟自己的模型，不拿範例取�
 
 ## 檢查更新
 
-介面顯示 **20261111.001**。「檢查更新」只有按下時才查詢本專案 GitHub Releases；可開啟官方版本頁，由使用者自行下載/解壓。沒有自動下載、安裝或背景更新。離線/限流/尚無 release 會明確提示，不影響模型檢視。
+介面顯示 **20261119.001**。「檢查更新」只有按下時才查詢本專案 GitHub Releases；可開啟官方版本頁，由使用者自行下載/解壓。沒有自動下載、安裝或背景更新。離線/限流/尚無 release 會明確提示，不影響模型檢視。
 
 ## 開發與發佈
 
@@ -87,8 +87,17 @@ VRM 0.x / 1.0 support is available in this working tree. See [VRM notes](docs/VR
 
 OBJ/STL/PLY 單檔上限256MB、DAE32MB；數量/列表/XML深度另有限制，外部相對資源總量1GB。遇缺檔/越界/不支援資源會報錯，不默默上網取材質。這些是防護與已測範圍，不是保證任意惡意檔安全。
 
+## MCP 快速使用
+
+- `inspect_model` 檢查允許的本機模型；`capture_model_views` 輸出固定角度 PNG，可加入部位註記及定時字幕。
+- `record_model_turntable` 錄製水平或垂直一圈，支援單一 GLB、左右同尺度比較、MP4 與循環 GIF。例：`{"modelPath":"D:/models/example.glb","axis":"horizontal","seconds":5,"format":"mp4"}`。
+- `record_model_camera_path` 依相機位置、注視點和視野等關鍵影格，輸出單一 GLB 的 MP4；可加入部位註記及定時字幕，不改模型，無碰撞約束。
+- `list_approved_e8_presets` 列出核准圖台；`capture_public_e8_demo` 依 ID 擷取。例如 `{"preset":"icc","seconds":10,"snapshots":3,"motion":"ride"}`。僅支援核准的 ICC 與地下坡道預設，不接受任意網址、腳本或登入，也不包含特製航拍路徑。
+
+影片及 GIF 需要已有可從 PATH 執行的 FFmpeg，MP4 需 libx264。本工具不內附 FFmpeg 命令列程式；一般檢視與 PNG 不需要。詳見 [MCP 文件](docs/mcp-capture.md) 與 [變更紀錄](https://github.com/shadowjohn/3wa_3dviewer/blob/main/CHANGELOG.md)。
+
 ## 統一工作版
-使用 `npm run package:working`，固定輸出到 `release/3wa_3dviewer-working-win-x64/3wa_3dviewer.exe`。後續不再產生 r8/r9 等工作副本；更新前須關閉這個工作版，腳本發現它執行中會拒絕。`portable-data` 保留不覆蓋。正式 `npm run package` 仍採版本目錄且禁止覆寫；這次未發 Release。EXE 顯示名稱已烙入 PE 資源，但仍未申請程式碼簽章，Windows 舊的開啟方式清單可能快取舊名稱。
+使用 `npm run package:working`，固定輸出到 `release/3wa_3dviewer-working-win-x64/3wa_3dviewer.exe`。後續不再產生 r8/r9 等工作副本；更新前須關閉這個工作版，腳本發現它執行中會拒絕。`portable-data` 保留不覆蓋。正式 `npm run package` 仍採版本目錄且禁止覆寫，與固定工作版分開。EXE 顯示名稱已烙入 PE 資源，但仍未申請程式碼簽章，Windows 舊的開啟方式清單可能快取舊名稱。
 
 ## Local tileset preview (implementation in progress)
 Directly open a file named `tileset.json` via the 3D Tiles filter, drag/drop or command line. `.json` is deliberately not a file-association candidate.

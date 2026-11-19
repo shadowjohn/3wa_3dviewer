@@ -1,11 +1,10 @@
-# 3WA 3D Viewer 20261111.001
+# 3WA 3D Viewer 20261119.001
 
-Windows x64 portable。解壓後執行 3wa_3dviewer.exe，保留整個資料夾。
+Windows x64 免安裝版。完整解壓後執行 `3wa_3dviewer.exe`；附 ZIP 的 SHA256 校驗檔。
 
-- GLB / glTF / b3dm 本機開檔、拖入、命令列與 Windows「開啟方式」。
-- 離線 Draco / Meshopt / KTX2-Basis / WebP 解碼；PBR、框景、六方向、灰模、線框、曝光與截圖。
-- 手動「檢查更新」，不自動下載或安裝。
-- glTF 外部資源限模型資料夾內。b3dm 只檢視內嵌模型，未套用 tileset 地理變換。
-- 不包含使用者模型。未簽章，請只從本 repository release 下載。
+- GLB 水平／垂直 360° 錄影：單模型或左右同尺度比較，輸出 H.264 MP4 或循環 GIF。
+- 部位註記與定時字幕可加入輸出；MCP 可為單一 GLB 指定關鍵影格運鏡。
+- 桌面及 MCP 支援兩個核准 E8 圖台的截圖或錄影：ICC 大樓與停車場、地下坡道。不接受任意網址、腳本或登入。
+- 自上一個正式版也加入本機參考媒體圖層、MCP 模型檢視和有限的本機 3D Tiles 預覽。
 
-SHA256 檔可用於比對 ZIP。完整限制、操作與驗證見 README / docs/VALIDATION.md。
+**錄影需求**：須自備 FFmpeg 並可由 PATH 執行；MP4 需 libx264。免安裝包不附 FFmpeg 命令列程式，也不含測試模型或示範影片。圖台錄影使用固定預設，不含特製航拍路徑。一般檢視與 PNG 不需要 FFmpeg。EXE 未簽章。
