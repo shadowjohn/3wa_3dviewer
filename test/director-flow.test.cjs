@@ -9,7 +9,7 @@ const makeTrack = (options = {}) => ({
   stages: [{ start: 1, end: 5, direction: 1, speed: 1, stop: null }],
   ...options,
 });
-const snapshot = ({ root }) => root.children.map(mesh =>
+const snapshot = ({ root }) => root.children.filter(mesh => mesh.isInstancedMesh).map(mesh =>
   Array.from(mesh.instanceMatrix.array.slice(0, mesh.count * 16)));
 
 test('absolute time seeks, a bend, and inactive bounds', async () => {
@@ -182,6 +182,55 @@ test('arrows and particles can be enabled independently with the air preset', as
     assert.ok(layer.root.children[0].count > 0);
     layer.dispose();
   }
+});
+
+test('scaled air drops and arrows fit a millimeter bore and stop at the reverse valve', async () => {
+  const { createDirectorFlow } = await flow;
+  const { Matrix4, Vector3 } = await three;
+  const stop = { distance: .015, normal: [1, 0, 0] };
+  const layer = createDirectorFlow(makeTrack({
+    points: [[-.015, 0, 0], [.015, 0, 0]], medium: 'air', particleCount: 24,
+    appearance: { shape: 'drop', arrowStyle: 'schematic', trace: 'ribbon', scale: .015 },
+    stages: [
+      { start: 0, end: 1, direction: 1, speed: .02, stop: null },
+      { start: 1, end: 2, direction: 1, speed: 0, stop: null },
+      { start: 2, end: 3, direction: -1, speed: .02, stop },
+    ],
+  }));
+  const [arrows, particles, ribbon] = layer.root.children;
+  assert.equal(particles.geometry.type, 'LatheGeometry');
+  assert.equal(particles.material.color.getHex(), 0xffe4b9);
+  ribbon.geometry.computeBoundingBox();
+  assert.ok(Math.abs(ribbon.geometry.boundingBox.max.y - .00138) < 1e-8);
+  const matrix = new Matrix4(), point = new Vector3();
+  for (const [time, isReverse] of [[.75, false], [2, true], [2.8, true]]) {
+    layer.update(time);
+    for (const mesh of [arrows, particles, ribbon]) {
+      const instances = mesh.isInstancedMesh ? mesh.count : 1;
+      const vertices = mesh.geometry.getAttribute('position');
+      assert.ok(instances > 0, 'the scaled flow remains visible');
+      let minimum = Infinity, maximum = -Infinity;
+      for (let i = 0; i < instances; i++) {
+        if (mesh.isInstancedMesh) mesh.getMatrixAt(i, matrix);
+        else matrix.identity();
+        for (let vertex = 0; vertex < vertices.count; vertex++) {
+          point.fromBufferAttribute(vertices, vertex).applyMatrix4(matrix);
+          assert.ok(Math.hypot(point.y, point.z) < .0037, 'the entire effect fits inside the 7.4 mm bore');
+          minimum = Math.min(point.x, minimum);
+          maximum = Math.max(point.x, maximum);
+        }
+      }
+      assert.ok(maximum > 0);
+      assert.ok(isReverse ? minimum >= 0 : minimum < 0, 'only forward flow crosses the valve seat');
+      if (time === 2.8) assert.ok(minimum < .003, 'the reverse flow approaches within 3 mm of the seat');
+      if (isReverse && mesh === ribbon) assert.ok(Math.abs(minimum - .001383) < 1e-8, 'the trace stopping margin scales');
+    }
+  }
+  layer.update(1);
+  const frozen = snapshot(layer);
+  layer.update(1.75);
+  assert.deepEqual(snapshot(layer), frozen);
+  layer.dispose();
 });
 
 test('media appearance presets and overrides preserve the approved arrow material', async () => {

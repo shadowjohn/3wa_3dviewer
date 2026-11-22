@@ -87,8 +87,12 @@
 
 `appearance.arrowStyle: "schematic"` 使用工程圖式寬箭頭。在路徑位於 XY 平面時，由 +Z 方向看可見箭頭正面。`appearance.trace` 可選 `ribbon`（半透明流帶）或 `streamline`（細流線），顯示於有效階段，並受同一截止平面約束。箭頭、粒子和流線可疊加，也可以只畫流線。
 
+`appearance.scale` 是箭頭、粒子、粒子橫向散布和流線寬度的倍率，可設 0.001–10，預設 1。管徑較小時可縮小效果，路徑座標、模型比例與 `stages.speed` 仍按原本的場景單位設定。
+
 流線和流帶預設沿用粒子顏色。要顯示相對流速，可加 `traceValues`，為每個 `points` 路徑點提供一筆 0–1 數值。顏色從低值的藍色漸變至高值的暖色，粒子移動速度仍由 `stages` 決定。方向箭頭與合流見 [junction.scene.json](../examples/view-flow1/reference-styles/junction.scene.json)，相對流速與回流見 [recirculation.scene.json](../examples/view-flow1/reference-styles/recirculation.scene.json)。兩組路徑與相對值均為合成示意。
 
 在倉庫根目錄執行 `python examples/view-flow1/reference-styles/generate_fixtures.py` 即可生成這兩段樣片用的 GLB。
 
 合成驗證場景在 [examples/view-flow1/check-valve.scene.json](../examples/view-flow1/check-valve.scene.json)。用同目錄的 [generate_fixture.py](../examples/view-flow1/generate_fixture.py) 匯出合成 GLB，將該 GLB 與腳本放在同一目錄即可預覽或出片。
+
+[check-valve-real.scene.json](../examples/view-flow1/check-valve-real.scene.json) 對應 VIEW-VALVE1 v1.0.1。將該工單的 `check_valve_cutaway.glb` 放在腳本旁即可預覽或出片。路徑以公尺設定，在開閥後沿可見剖面繞過閥片和導引籠，反向在關閉後停於閥片下游面前。路徑和開關行程均為展示用。

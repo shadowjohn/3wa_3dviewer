@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "seconds": 12,
+  "camera": [
+    {"time": 0, "position": [0.009, 0.018, 0.104], "lookAt": [0, 0.0003, 0], "fov": 37},
+    {"time": 2.2, "position": [0.0045, 0.014, 0.102], "lookAt": [0, 0.0003, 0], "fov": 37},
+    {"time": 12, "position": [0.0045, 0.014, 0.102], "lookAt": [0, 0.0003, 0], "fov": 37}
+  ],
+  "objects": [
+    {"id": "valve", "file": "check_valve_cutaway.glb", "animation": {"clip": "Valve_Open_Close_Demo", "rate": 0.5, "loop": "once"}}
+  ],
+  "lighting": {"direction": [1, 4, 5], "intensity": 2, "color": "#f6faff"},
+  "flows": [
+    {
+      "id": "forward-air",
+      "object": "valve",
+      "medium": "air",
+      "points": [
+        [-0.039, 0, 0], [-0.0301, 0, 0], [-0.022, 0, 0], [-0.009, 0, 0],
+        [-0.0046, 0, 0.001], [-0.0023, 0.0008, 0.0016], [-0.0017, 0.0015, 0.0025],
+        [-0.0008, 0.0029, 0.0041], [0.0001, 0.00425, 0.00495], [0.0011, 0.00448, 0.00502],
+        [0.0036, 0.00448, 0.00502], [0.0075, 0.00448, 0.00502], [0.00855, 0.00389, 0.00434],
+        [0.00965, 0.00255, 0.0028], [0.0114, 0.00115, 0.0015], [0.014, 0, 0],
+        [0.0301, 0, 0], [0.039, 0, 0]
+      ],
+      "seed": 816,
+      "arrowCount": 10,
+      "particleCount": 60,
+      "appearance": {"shape": "drop", "arrowStyle": "schematic", "trace": "streamline", "arrowColor": "#19CFF6", "particleColor": "#76DEFF", "opacity": 0.82, "scale": 0.0035},
+      "stages": [
+        {"start": 2.2333333333333334, "end": 4.233333333333333, "direction": "forward", "speed": 0.061},
+        {"start": 4.233333333333333, "end": 5, "direction": "forward", "speed": 0}
+      ]
+    },
+    {
+      "id": "reverse-air",
+      "object": "valve",
+      "medium": "air",
+      "points": [[-0.039, 0, 0], [-0.0001, 0, 0], [0.0301, 0, 0], [0.039, 0, 0]],
+      "seed": 442,
+      "arrowCount": 6,
+      "particleCount": 36,
+      "appearance": {"shape": "drop", "arrowStyle": "schematic", "trace": "streamline", "arrowColor": "#FF9D45", "particleColor": "#FFD097", "opacity": 0.86, "scale": 0.006},
+      "stages": [
+        {"start": 6.233333333333333, "end": 12, "direction": "reverse", "speed": 0.033, "stop": {"distance": 0.0389, "normal": [1, 0, 0]}}
+      ]
+    }
+  ],
+  "captions": [
+    {"text": "實物模型剖面｜開閥示意", "start": 0, "end": 2.2333333333333334},
+    {"text": "正向通過示意｜繞過閥片，從出口流出", "start": 2.2333333333333334, "end": 4.233333333333333},
+    {"text": "停流｜閥片復位", "start": 4.233333333333333, "end": 6.233333333333333},
+    {"text": "反向截止｜停在閥片下游面", "start": 6.233333333333333, "end": 12}
+  ]
+}

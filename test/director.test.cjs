@@ -135,11 +135,14 @@ test('flow appearance is optional and compiles a named profile with explicit col
  s.flows=[flowTrack()];
  a.equal(d.director(s).flows[0].appearance,null);
  s.flows[0].appearance={shape:'viscous',particleColor:'#ab7318',arrowColor:'#FFDA92',opacity:.85};
- a.deepEqual(d.director(s).flows[0].appearance,{...s.flows[0].appearance,arrowStyle:null,trace:null});
+ a.deepEqual(d.director(s).flows[0].appearance,{...s.flows[0].appearance,arrowStyle:null,trace:null,scale:1});
  s.flows[0].appearance={};
- a.deepEqual(d.director(s).flows[0].appearance,{shape:'drop',particleColor:null,arrowColor:null,opacity:null,arrowStyle:null,trace:null});
+ a.deepEqual(d.director(s).flows[0].appearance,{shape:'drop',particleColor:null,arrowColor:null,opacity:null,arrowStyle:null,trace:null,scale:1});
+ s.flows[0].appearance={scale:.015};
+ a.equal(d.director(s).flows[0].appearance.scale,.015);
  for(const appearance of [{shape:'steam-code'}, {particleColor:'#123'}, {arrowColor:'rgb(1,2,3)'},
-  {opacity:1.5},{opacity:0},{opacity:Infinity},{materialUrl:'invalid'},{arrowStyle:'cursive'},{trace:'sheet'},null]){
+  {opacity:1.5},{opacity:0},{opacity:Infinity},{materialUrl:'invalid'},{arrowStyle:'cursive'},{trace:'sheet'},
+  {scale:0},{scale:.0009},{scale:10.1},{scale:'1'},{scale:Infinity},null]){
   s.flows[0].appearance=appearance;
   a.throws(()=>d.director(s),/flow/i);
  }

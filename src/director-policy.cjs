@@ -4,8 +4,8 @@ const vector=(v,max=100)=>Array.isArray(v)&&v.length===3&&v.every(n=>Number.isFi
 const vec=(v,d,m)=>{if(v===undefined)return d;if(!vector(v,m))throw Error('Invalid director vector');return v;};
 function flowAppearance(raw,medium){
  if(raw===undefined)return null;
- if(!keys(raw,['shape','arrowColor','particleColor','opacity','arrowStyle','trace']))throw Error('Invalid flow appearance.');
- const {shape=medium==='water'?'drop':'bead',arrowColor,particleColor,opacity,arrowStyle,trace}=raw;
+ if(!keys(raw,['shape','arrowColor','particleColor','opacity','arrowStyle','trace','scale']))throw Error('Invalid flow appearance.');
+ const {shape=medium==='water'?'drop':'bead',arrowColor,particleColor,opacity,arrowStyle,trace,scale=1}=raw;
  const validColor=value=>value===undefined||(typeof value==='string'&&/^#[\da-f]{6}$/i.test(value));
  if(!['drop','bead','viscous','mist'].includes(shape)||!validColor(arrowColor)||!validColor(particleColor)||
     (opacity!==undefined&&(!Number.isFinite(opacity)||opacity<=0||opacity>1))){
@@ -13,7 +13,8 @@ function flowAppearance(raw,medium){
  }
  if((arrowStyle!==undefined&&arrowStyle!=='schematic')||
     (trace!==undefined&&!['ribbon','streamline'].includes(trace)))throw Error('Invalid flow arrow or trace style.');
- return {shape,arrowColor:arrowColor??null,particleColor:particleColor??null,opacity:opacity??null,arrowStyle:arrowStyle??null,trace:trace??null};
+ if(!Number.isFinite(scale)||scale<.001||scale>10)throw Error('Flow appearance scale must be between 0.001 and 10.');
+ return {shape,arrowColor:arrowColor??null,particleColor:particleColor??null,opacity:opacity??null,arrowStyle:arrowStyle??null,trace:trace??null,scale};
 }
 function flowPlan(raw,objectIds,seconds){
  if(raw===undefined)return [];

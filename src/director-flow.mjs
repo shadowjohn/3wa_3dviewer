@@ -79,7 +79,7 @@ function sameStop(a, b) {
  return a === b || Boolean(a && b && a.distance === b.distance && a.normal.every((value, i) => value === b.normal[i]));
 }
 
-function stagesFor(track, route, effects) {
+function stagesFor(track, route, effects, margin) {
  const stages = [];
  for (const stage of track.stages) {
   const previous = stages.at(-1);
@@ -93,7 +93,7 @@ function stagesFor(track, route, effects) {
    plane = { normal, origin: normal.dot(seat) };
   }
   const limits = effects.map(({ radius, spread }) =>
-   plane ? stopLimit(route, stage, plane, radius + spread + MARGIN) : route.length);
+   plane ? stopLimit(route, stage, plane, radius + spread + margin) : route.length);
   stages.push({
    ...stage, plane, limits,
    offset: continuous ? previous.offset + previous.speed * (previous.end - previous.start) : 0,
@@ -135,16 +135,17 @@ function appearanceFor(track) {
  const colors = PRESET_COLORS[shape] ?? COLORS[track.medium];
  return {
   ...appearance, shape,
+  scale: appearance.scale ?? 1,
   arrowColor: appearance.arrowColor ?? colors[0],
   particleColor: appearance.particleColor ?? colors[1],
  };
 }
 
-function effectFor(particle, count, track) {
- const appearance = appearanceFor(track);
- const { shape } = appearance;
+function effectFor(particle, count, track, appearance) {
+ const { shape, scale } = appearance;
  const mist = shape === 'mist';
  const geometry = particle ? particleGeometry(shape) : arrowGeometry(appearance.arrowStyle);
+ if (scale !== 1) geometry.scale(scale, scale, scale);
  const color = particle ? appearance.particleColor : appearance.arrowColor;
  const opacity = appearance.opacity ?? (mist ? .34 : 1);
  const translucent = mist || opacity < 1;
@@ -167,7 +168,7 @@ function effectFor(particle, count, track) {
  for (let i = 0; i < vertices.count; i++) {
   radius = Math.max(radius, vertex.fromBufferAttribute(vertices, i).length());
  }
- const spread = particle ? .14 : 0;
+ const spread = particle ? .14 * scale : 0;
  const scatter = particle ? Array.from({ length: count }, (_, i) => {
   const angle = seedUnit(track.seed, i * 3 + 200) * Math.PI * 2;
   const distance = spread * Math.sqrt(seedUnit(track.seed, i * 3 + 201));
@@ -212,8 +213,8 @@ function traceDistances(route, start, end) {
  return stops.sort((a, b) => a - b);
 }
 
-function traceGeometry(route, stage, radius, sides) {
- const span = stage.plane ? stopLimit(route, stage, stage.plane, radius + MARGIN) : route.length;
+function traceGeometry(route, stage, radius, sides, margin) {
+ const span = stage.plane ? stopLimit(route, stage, stage.plane, radius + margin) : route.length;
  if (span <= 0) return null;
  const start = stage.direction > 0 ? 0 : route.length - span;
  const end = stage.direction > 0 ? span : route.length;
@@ -270,11 +271,11 @@ function traceGeometry(route, stage, radius, sides) {
  return geometry;
 }
 
-function createTrace(track, route, stages) {
- const appearance = appearanceFor(track);
+function createTrace(appearance, route, stages, margin) {
  if (!appearance.trace) return null;
  const ribbon = appearance.trace === 'ribbon';
- const geometries = stages.map(stage => traceGeometry(route, stage, ribbon ? .092 : .019, ribbon ? 2 : 6));
+ const radius = (ribbon ? .092 : .019) * appearance.scale;
+ const geometries = stages.map(stage => traceGeometry(route, stage, radius, ribbon ? 2 : 6, margin));
  const first = geometries.find(Boolean);
  if (!first) return null;
  const material = new MeshBasicMaterial({
@@ -307,12 +308,14 @@ export function createDirectorFlow(track) {
  root.name = 'director-flow-' + track.id;
  root.visible = false;
  const route = routeFor(track.points, track.traceValues);
+ const appearance = appearanceFor(track);
+ const margin = MARGIN * appearance.scale;
  const effects = [];
- if (track.arrows && track.arrowCount > 0) effects.push(effectFor(false, track.arrowCount, track));
- if (track.particles && track.particleCount > 0) effects.push(effectFor(true, track.particleCount, track));
+ if (track.arrows && track.arrowCount > 0) effects.push(effectFor(false, track.arrowCount, track, appearance));
+ if (track.particles && track.particleCount > 0) effects.push(effectFor(true, track.particleCount, track, appearance));
  for (const { mesh } of effects) root.add(mesh);
- const stages = stagesFor(track, route, effects);
- const trace = createTrace(track, route, stages);
+ const stages = stagesFor(track, route, effects, margin);
+ const trace = createTrace(appearance, route, stages, margin);
  if (trace) root.add(trace.mesh);
  const position = new Vector3(), tangent = new Vector3();
  const sideways = new Vector3(), vertical = new Vector3();
