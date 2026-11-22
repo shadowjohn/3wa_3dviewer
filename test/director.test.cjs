@@ -49,6 +49,36 @@ test('anchor follows its own model yet another object can occlude it',async()=>{
  object.position.x=1;object.updateMatrixWorld();
  a.ok(visibleNote(note,object,c,1,[object,blocker]).x>before.x);
 });
+test('director content samples world anchors in a host scene and disposes only its resources',async()=>{
+ const {Group,Mesh,BoxGeometry,MeshBasicMaterial}=await import('three');
+ const {createDirectorContent}=await import('../src/director-content.mjs');
+ const job=d.director({
+  version:1,seconds:2,camera:[frame(0),frame(2)],
+  objects:[{id:'valve',file:'valve.glb',movement:[
+   {time:0,position:[0,0,0],rotation:[0,0,0]},{time:2,position:[4,0,0],rotation:[0,0,0]},
+  ]}],
+  notes:[{object:'valve',text:'Valve',point:[0,0,.5]}],
+  captions:[{text:'Open',start:.5,end:1.5}],
+ });
+ const map=new Group(),mount=new Group(),unrelated=new Group();
+ map.position.set(5,6,7);mount.position.set(1,2,3);map.add(mount);mount.add(unrelated);
+ const geometry=new BoxGeometry(),mesh=new Mesh(geometry,new MeshBasicMaterial());
+ let disposals=0;
+ geometry.addEventListener('dispose',()=>disposals++);
+ const content=await createDirectorContent({job,scene:mount,loadModel:()=>({scene:mesh})});
+ const forward=content.applyFrame(15);
+ a.deepEqual(forward.notes[0].point,[7,8,10.5]);
+ a.deepEqual(forward.camera,d.directorCamera(job,15));
+ a.equal(forward.caption,'Open');
+ a.equal(content.applyFrame(45).caption,null);
+ a.deepEqual(content.applyFrame(0).notes[0].point,[6,8,10.5]);
+ a.deepEqual(content.applyFrame(15),forward);
+ map.position.x+=.5;
+ a.deepEqual(content.worldNotes(15)[0].point,[7.5,8,10.5]);
+ content.dispose();content.dispose();
+ a.deepEqual(mount.children,[unrelated]);
+ a.equal(disposals,1);
+});
 test('named clip controls reject invalid input and normalize defaults',()=>{
  const track={clip:'Flap'};
  const s=scene();s.objects[1].animation=track;

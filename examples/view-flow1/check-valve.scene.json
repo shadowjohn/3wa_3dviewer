@@ -176,6 +176,11 @@
       ]
     }
   ],
+  "notes": [
+    {"object": "valve", "text": "閥片打開，正向通過", "point": [0, 0.72, 0.1], "start": 1.0333333333333334, "end": 4},
+    {"object": "valve", "text": "停流", "point": [0, 0.72, 0.1], "start": 4, "end": 6},
+    {"object": "valve", "text": "逆流在閥座截止", "point": [0, 0.72, 0.1], "start": 6, "end": 12}
+  ],
   "captions": [
     {
       "text": "流向示意 ｜ 開閥",

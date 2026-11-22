@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>E8 腳本寶｜單向閥</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="./inc/javascript/easymap8/easymap.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header><h1>E8 腳本寶</h1></header>
+  <main>
+    <section class="viewport" aria-label="測試圖台">
+      <div id="map"></div>
+      <div id="notes" aria-hidden="true"></div>
+      <p id="caption" hidden></p>
+    </section>
+    <aside>
+      <h2>合成單向閥</h2>
+      <div class="actions">
+        <button id="play" type="button" disabled>播放</button>
+        <button id="camera" type="button" disabled>切換導演視角</button>
+        <button id="detach" type="button" disabled>卸載場景</button>
+      </div>
+      <label class="timeline" for="seek"><span>時間軸</span><output id="time" for="seek">0.00 秒</output></label>
+      <input id="seek" type="range" min="0" value="0" disabled>
+      <form id="anchor">
+        <h2>地圖錨點</h2>
+        <div class="fields">
+          <label>經度<input id="longitude" type="number" step="any" value="120.675542" required></label>
+          <label>緯度<input id="latitude" type="number" step="any" value="24.119096" required></label>
+          <label>高程（m）<input id="altitude" type="number" step="any" placeholder="未指定"></label>
+          <label>朝向（度）<input id="heading" type="number" step="any" value="80" required></label>
+          <label>比例<input id="scale" type="number" step="any" value="2" required></label>
+        </div>
+        <button id="attach" type="submit" disabled>套用錨點</button>
+      </form>
+      <p id="status" role="status">載入 E8 圖台…</p>
+    </aside>
+  </main>
+  <script src="./inc/javascript/easymap8/easymap.js"></script>
+  <script type="module" src="demo.js"></script>
+</body>
+</html>

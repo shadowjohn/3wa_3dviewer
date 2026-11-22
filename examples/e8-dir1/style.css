@@ -1,0 +1,32 @@
+:root { color-scheme: dark; font: 16px system-ui, sans-serif; background: #101923; color: #f1f6fb; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+header { padding: 1rem 1.3rem; border-bottom: 1px solid #2c4054; }
+h1 { margin: 0; font-size: 1.4rem; }
+main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(17rem, 22rem); min-height: calc(100dvh - 3.85rem); }
+.viewport { position: relative; min-height: 25rem; overflow: hidden; }
+#map, #notes { position: absolute; inset: 0; }
+#notes, #caption { pointer-events: none; }
+#notes span, #caption { color: #effdff; background: #152437ed; border: 1px solid #59c5de; border-radius: .4rem; padding: .4em .6em; }
+#notes span { position: absolute; transform: translate(-50%, -115%); white-space: nowrap; font-size: .88rem; }
+#notes span::after { position: absolute; content: ''; top: 100%; left: 50%; height: .42rem; border-left: 1px solid #59c5de; }
+#caption { position: absolute; bottom: 1.5rem; left: 50%; max-width: calc(100% - 3rem); margin: 0; transform: translateX(-50%); }
+aside { padding: 1.25rem; border-left: 1px solid #2c4054; background: #152331; }
+h2 { margin: 0 0 1rem; font-size: 1.15rem; }
+.actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+button, input { font: inherit; }
+button { border: 1px solid #476581; border-radius: .45rem; background: #243c52; padding: .5rem .65rem; }
+button:enabled { cursor: pointer; }
+button:focus-visible, input:focus-visible { outline: 2px solid #7ee1e5; outline-offset: 2px; }
+button:disabled { opacity: .5; }
+.timeline { display: flex; gap: 1rem; justify-content: space-between; margin-top: 1rem; }
+#seek { width: 100%; margin: .6rem 0 1rem; accent-color: #72e5e0; }
+#anchor { border-top: 1px solid #395063; padding-top: 1.2rem; }
+.fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .7rem; margin-bottom: 1rem; }
+.fields input { display: block; width: 100%; margin-top: .3rem; border: 1px solid #476581; border-radius: .3rem; padding: .38rem; background: #101923; }
+#status { color: #becfdb; line-height: 1.5; }
+@media (max-width: 45rem) {
+  main { grid-template-columns: 1fr; }
+  .viewport { min-height: min(60dvh, 34rem); }
+  aside { border-left: 0; border-top: 1px solid #2c4054; }
+}

@@ -7,5 +7,6 @@ portable-data/
 *.bin
 *.log
 /web/
+/web-e8-director/
 
 *.vrm

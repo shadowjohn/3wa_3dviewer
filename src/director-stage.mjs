@@ -1,10 +1,8 @@
 import * as THREE from 'three';
 import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
 import directorPolicy from './director-policy.cjs';
-import captionsPolicy from './timed-captions.cjs';
-import {bindDirectorClip} from './director-animation.mjs';
-import {createDirectorFlow} from './director-flow.mjs';
-import {visibleNote,drawModelNotes,drawTimedCaption} from './model-notes.mjs';
+import {createDirectorContent} from './director-content.mjs';
+import {drawModelNotes,drawTimedCaption} from './model-notes.mjs';
 
 export function directorEnvironment(renderer,scene){
  const previous=scene.environment,pmrem=new THREE.PMREMGenerator(renderer),room=new RoomEnvironment();
@@ -57,64 +55,29 @@ function directorLighting(plan,groups,scene,renderer){
  };
 }
 
-function disposeModels(groups){
- const resources=new Set();
- for(const {holder,mesh} of groups){
-  holder.removeFromParent();
-  mesh.traverse(o=>{
-   if(o.geometry)resources.add(o.geometry);
-   if(o.skeleton)resources.add(o.skeleton);
-   for(const material of [].concat(o.material??[])){
-    if(!material)continue;
-    resources.add(material);
-    for(const value of Object.values(material))if(value?.isTexture)resources.add(value);
-    for(const entry of Object.values(material.uniforms??{}))if(entry.value?.isTexture)resources.add(entry.value);
-   }
-  });
- }
- for(const resource of resources)resource.dispose();
-}
-
 function frameCanvas(width,height){
  const canvas=document.createElement('canvas');
  canvas.width=width;canvas.height=height;return canvas;
 }
 
 export async function createDirectorStage({job,renderer,scene,loader,readModel}){
- const groups=[],models=[],byId=new Map(),flows=[];
- let lighting,board,blendA,blendB,disposed=false;
+ let content,lighting,board,blendA,blendB,disposed=false;
  function dispose(){
   if(disposed)return;
   disposed=true;
-  for(const flow of flows)flow.dispose();
-  lighting?.dispose();disposeModels(groups);
-  groups.length=0;models.length=0;flows.length=0;byId.clear();
-  lighting=board=blendA=blendB=null;
+  lighting?.dispose();content?.dispose();
+  content=lighting=board=blendA=blendB=null;
  }
 
  try{
-  for(let i=0;i<job.objects.length;i++){
-   const o=job.objects[i],a=await readModel(i);
-   const g=await loader.parseAsync(a.buffer.slice(a.byteOffset,a.byteOffset+a.byteLength),'');
-   const mesh=g.scene,holder=new THREE.Group(),pivot=new THREE.Group();
-   const item={o,mesh,holder,pivot:new THREE.Vector3(...o.pivot)};
-   groups.push(item);models.push(mesh);byId.set(o.id,item);
-   pivot.position.copy(item.pivot).negate();pivot.add(mesh);holder.add(pivot);scene.add(holder);holder.updateMatrixWorld(true);
-   const bounded=new THREE.Box3().setFromObject(mesh).getBoundingSphere(new THREE.Sphere()),r=bounded.radius;
-   if(!Number.isFinite(r)||!(r>0))throw Error('Invalid scene model bounds.');
-   item.radius=r;item.envelope=r+bounded.center.length();
-   item.axis=o.spin?new THREE.Vector3(...o.spin.axis).normalize():null;
-   item.clip=bindDirectorClip(mesh,g.animations,o.animation,o.id);
-  }
-  for(const track of job.flows??[]){
-   const effect=createDirectorFlow(track),parent=track.object===null?scene:byId.get(track.object).mesh;
-   flows.push(effect);parent.add(effect.root);
-  }
-  lighting=directorLighting(job.lighting,groups,scene,renderer);
+  content=await createDirectorContent({job,scene,async loadModel(index){
+   const bytes=await readModel(index);
+   return loader.parseAsync(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),'');
+  }});
+  lighting=directorLighting(job.lighting,content.groups,scene,renderer);
  }catch(error){dispose();throw error;}
 
  const view=new THREE.PerspectiveCamera(45,1,.001,1000),aim=new THREE.Vector3(),upTest=new THREE.Vector3();
- const axisRotation=new THREE.Quaternion(),q=new THREE.Quaternion(),e=new THREE.Euler();
  const annotated=job.notes.length||job.captions.length;
  let width=0,height=0,styleSize=false;
  function resize(w,h,updateStyle){
@@ -122,21 +85,12 @@ export async function createDirectorStage({job,renderer,scene,loader,readModel})
   renderer.setSize(w,h,updateStyle);width=w;height=h;styleSize=updateStyle;
  }
  function sample(index,w,h,cameraOverride){
-  const t=index/job.fps,pose=cameraOverride??directorPolicy.directorCamera(job,index);
-  for(const g of groups){
-   const x=directorPolicy.placement(g.o,t);
-   g.holder.position.fromArray(x.position).add(g.pivot);
-   q.setFromEuler(e.set(...x.rotation.map(THREE.MathUtils.degToRad)));
-   if(g.axis)q.multiply(axisRotation.setFromAxisAngle(g.axis,THREE.MathUtils.degToRad(x.spinDegrees)));
-   g.holder.quaternion.copy(q);g.clip?.(t);
-  }
-  for(const flow of flows)flow.update(t);
-  lighting?.update(t);scene.updateMatrixWorld(true);view.position.fromArray(pose.position);aim.fromArray(pose.lookAt);
+  const {time,camera,caption}=content.applyFrame(index),pose=cameraOverride??camera;
+  lighting?.update(time);view.position.fromArray(pose.position);aim.fromArray(pose.lookAt);
   view.up.set(0,Math.abs(upTest.subVectors(view.position,aim).normalize().y)>.999999?0:1,1e-9);
   view.lookAt(aim);view.aspect=w/h;view.fov=pose.fov;view.updateProjectionMatrix();view.updateMatrixWorld(true);
   renderer.render(scene,view);
-  const active=directorPolicy.activeNotes(job.notes,t).map(n=>{const g=byId.get(n.object);return visibleNote(n,g.mesh,view,g.radius,models);}).filter(Boolean);
-  return {active,caption:captionsPolicy.captionAt(job.captions,t)};
+  return {active:content.projectNotes(index,view),caption};
  }
  function annotate(ctx,{active,caption},w,h){
   drawModelNotes(ctx,active,{x:0,y:0,width:w,height:h});drawTimedCaption(ctx,caption,w,h);
