@@ -95,4 +95,6 @@
 
 合成驗證場景在 [examples/view-flow1/check-valve.scene.json](../examples/view-flow1/check-valve.scene.json)。用同目錄的 [generate_fixture.py](../examples/view-flow1/generate_fixture.py) 匯出合成 GLB，將該 GLB 與腳本放在同一目錄即可預覽或出片。
 
-[check-valve-real.scene.json](../examples/view-flow1/check-valve-real.scene.json) 對應 VIEW-VALVE1 v1.0.1。將該工單的 `check_valve_cutaway.glb` 放在腳本旁即可預覽或出片。路徑以公尺設定，在開閥後沿可見剖面繞過閥片和導引籠，反向在關閉後停於閥片下游面前。路徑和開關行程均為展示用。
+[check-valve-real.scene.json](../examples/view-flow1/check-valve-real.scene.json) 對應 VIEW-VALVE1 v1.0.2。將該工單的 `check_valve_cutaway.glb` 放在腳本旁即可預覽或出片。路徑以公尺設定，小蝌蚪先流到閥片前，在開閥後沿可見剖面經過導流籠開孔。反向在關閉後停於閥片下游面前。路徑和開關行程均為展示用。
+
+[check-valve-assembly.scene.json](../examples/view-flow1/assembly/check-valve-assembly.scene.json) 示範 19 秒的拆解、零件說明和回裝。從倉庫根目錄執行 `node examples/view-flow1/assembly/generate_assembly.cjs` 生成樣片用 GLB。如資產倉庫放在別處，將含有 v1.0.2 組裝及拆解 GLB 的目錄作為命令參數。

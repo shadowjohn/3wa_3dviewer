@@ -28,8 +28,9 @@
       "particleCount": 60,
       "appearance": {"shape": "drop", "arrowStyle": "schematic", "trace": "streamline", "arrowColor": "#19CFF6", "particleColor": "#76DEFF", "opacity": 0.82, "scale": 0.0035},
       "stages": [
-        {"start": 2.2333333333333334, "end": 4.233333333333333, "direction": "forward", "speed": 0.061},
-        {"start": 4.233333333333333, "end": 5, "direction": "forward", "speed": 0}
+        {"start": 0.2, "end": 2.2333333333333334, "direction": "forward", "speed": 0.033, "stop": {"distance": 0.037020193, "normal": [1, 0, 0]}},
+        {"start": 2.2333333333333334, "end": 4.8, "direction": "forward", "speed": 0.033},
+        {"start": 4.8, "end": 5, "direction": "forward", "speed": 0}
       ]
     },
     {
@@ -42,14 +43,46 @@
       "particleCount": 36,
       "appearance": {"shape": "drop", "arrowStyle": "schematic", "trace": "streamline", "arrowColor": "#FF9D45", "particleColor": "#FFD097", "opacity": 0.86, "scale": 0.006},
       "stages": [
-        {"start": 6.233333333333333, "end": 12, "direction": "reverse", "speed": 0.033, "stop": {"distance": 0.0389, "normal": [1, 0, 0]}}
+        {"start": 6.233333333333333, "end": 12, "direction": "reverse", "speed": 0.017, "stop": {"distance": 0.0389, "normal": [1, 0, 0]}}
+      ]
+    },
+    {
+      "id": "inlet-direction",
+      "object": "valve",
+      "medium": "air",
+      "points": [[-0.0405, 0, 0], [-0.034, 0, 0]],
+      "particles": false,
+      "arrowCount": 1,
+      "appearance": {"arrowStyle": "schematic", "arrowColor": "#19CFF6", "scale": 0.010},
+      "stages": [{"start": 0.2, "end": 5, "direction": "forward", "speed": 0}]
+    },
+    {
+      "id": "outlet-direction",
+      "object": "valve",
+      "medium": "air",
+      "points": [[0.034, 0, 0], [0.0405, 0, 0]],
+      "particles": false,
+      "arrowCount": 1,
+      "appearance": {"arrowStyle": "schematic", "arrowColor": "#E7F7FF", "scale": 0.010},
+      "stages": [
+        {"start": 2.2333333333333334, "end": 5, "direction": "forward", "speed": 0},
+        {"start": 6.233333333333333, "end": 12, "direction": "reverse", "speed": 0}
       ]
     }
   ],
+  "notes": [
+    {"object": "valve", "text": "進氣口", "point": [-0.0301, 0.0025, 0.0048], "start": 0.2, "end": 1.1},
+    {"object": "valve", "text": "橡膠皮膜", "point": [0.0004, 0.0024, 0.0095], "start": 1.1, "end": 2.2333333333333334},
+    {"object": "valve", "text": "支架開孔", "point": [0.0058, 0.0038, 0.0105], "start": 2.2333333333333334, "end": 3.7},
+    {"object": "valve", "text": "氣流出口", "point": [0.0301, 0.0025, 0.0048], "start": 3.7, "end": 4.8},
+    {"object": "valve", "text": "閥座截止", "point": [-0.0023, 0.0024, 0.0095], "start": 6.233333333333333, "end": 12}
+  ],
   "captions": [
-    {"text": "實物模型剖面｜開閥示意", "start": 0, "end": 2.2333333333333334},
-    {"text": "正向通過示意｜繞過閥片，從出口流出", "start": 2.2333333333333334, "end": 4.233333333333333},
-    {"text": "停流｜閥片復位", "start": 4.233333333333333, "end": 6.233333333333333},
-    {"text": "反向截止｜停在閥片下游面", "start": 6.233333333333333, "end": 12}
+    {"text": "氣體出發｜由左端進氣", "start": 0, "end": 1.1},
+    {"text": "正向進氣｜皮膜受推打開", "start": 1.1, "end": 2.2333333333333334},
+    {"text": "正向通過｜氣流經過皮膜旁的支架孔洞", "start": 2.2333333333333334, "end": 3.7},
+    {"text": "氣流由右端出口流出", "start": 3.7, "end": 4.8},
+    {"text": "停流｜皮膜回到閥座", "start": 4.8, "end": 6.233333333333333},
+    {"text": "反向截止｜皮膜貼住閥座，氣流被擋住", "start": 6.233333333333333, "end": 12}
   ]
 }
