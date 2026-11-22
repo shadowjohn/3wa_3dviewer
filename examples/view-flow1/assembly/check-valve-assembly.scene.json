@@ -57,18 +57,18 @@
   ],
   "lighting": {"direction": [-1, 4, 5], "intensity": 1.8, "color": "#f6faff"},
   "notes": [
-    {"object": "valve", "text": "進口殼體", "point": [-0.0536, 0.0054, 0.0101], "start": 5.2, "end": 8.5},
-    {"object": "valve", "text": "密封座環", "point": [-0.01725, 0.003, 0.0092], "start": 5.2, "end": 8.5},
-    {"object": "valve", "text": "橡膠閥片", "point": [0.002, -0.0019, 0.0058], "start": 5.2, "end": 8.5},
-    {"object": "valve", "text": "彈簧", "point": [0.0166, 0.0024, 0.0062], "start": 8.7, "end": 12},
-    {"object": "valve", "text": "導流籠", "point": [0.0352, -0.0021, 0.0089], "start": 8.7, "end": 12},
-    {"object": "valve", "text": "出口殼體", "point": [0.0659, 0.0047, 0.0081], "start": 8.7, "end": 12},
-    {"object": "valve", "text": "正向箭頭", "point": [0.00942, 0.0116, 0], "start": 16.4, "end": 19}
+    {"object": "valve", "text": "進口殼體", "point": [-0.0536, 0.0054, 0.0101], "labelOffsetY": -0.255, "start": 5.2, "end": 8.5},
+    {"object": "valve", "text": "NBR 密封座環", "point": [-0.01725, 0.003, 0.0092], "labelOffsetY": 0.155, "start": 5.2, "end": 8.5},
+    {"object": "valve", "text": "氟橡膠閥體", "point": [0.002, -0.0019, 0.0058], "labelOffsetY": -0.235, "start": 5.2, "end": 8.5},
+    {"object": "valve", "text": "彈簧", "point": [0.0166, 0.0024, 0.0062], "labelOffsetY": -0.225, "start": 8.7, "end": 12},
+    {"object": "valve", "text": "導流籠", "point": [0.0352, -0.0021, 0.0089], "labelOffsetY": 0.12, "start": 8.7, "end": 12},
+    {"object": "valve", "text": "出口殼體", "point": [0.0659, 0.0047, 0.0081], "labelOffsetY": -0.245, "start": 8.7, "end": 12},
+    {"object": "valve", "text": "正向箭頭", "point": [0.00942, 0.0116, 0], "labelOffsetY": -0.15, "start": 16.4, "end": 19}
   ],
   "captions": [
     {"text": "單向閥 v1.0.2｜錐台入口、凸圓台出口", "start": 0, "end": 2.5},
     {"text": "拆解示意｜沿管軸分離六個零件", "start": 2.5, "end": 5},
-    {"text": "關閉時，橡膠閥片貼合密封座環", "start": 5, "end": 8.5},
+    {"text": "關閉時，氟橡膠閥體貼合 NBR 密封座環", "start": 5, "end": 8.5},
     {"text": "彈簧使閥片復位，導流籠定位內件", "start": 8.5, "end": 12},
     {"text": "組裝示意｜各零件沿管軸回位", "start": 12, "end": 16},
     {"text": "正向流向｜由進口錐台朝出口圓台", "start": 16, "end": 19}

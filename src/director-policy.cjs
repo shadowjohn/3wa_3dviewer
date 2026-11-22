@@ -112,9 +112,14 @@ function director(input){
  const n=input.notes??[];
  if(!Array.isArray(n)||n.length>12)throw Error('Up to 12 scene notes.');
  const notes=n.map(a=>{
-  if(!keys(a,['object','text','point','start','end'])||!ids.has(a.object))throw Error('Invalid scene note object.');
+  if(!keys(a,['object','text','point','start','end','labelOffsetY'])||!ids.has(a.object))throw Error('Invalid scene note object.');
   const [b]=modelNotes([{text:a.text,point:a.point}],1),start=a.start??0,end=a.end??seconds;
   if(!Number.isFinite(start)||!Number.isFinite(end)||start<0||end<=start||end>seconds)throw Error('Invalid scene note time window.');
+  const {labelOffsetY}=a;
+  if(labelOffsetY!==undefined){
+   if(!Number.isFinite(labelOffsetY)||Math.abs(labelOffsetY)>.45)throw Error('Scene note labelOffsetY must be between -0.45 and 0.45.');
+   b.labelOffsetY=labelOffsetY;
+  }
   return {...b,object:a.object,start,end};
  });
  return {seconds,frameCount,fps:FPS,width:640,height:480,camera,shots,objects,notes,flows,lighting:lightingPlan(input.lighting,seconds),captions:captions(input.captions,seconds)};

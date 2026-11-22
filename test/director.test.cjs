@@ -9,6 +9,20 @@ test('same timeline samples independent stationary, movement, spin and notes',()
  a.deepEqual(d.placement(s.objects[1],1),{position:[2,0,0],rotation:[0,30,0],spinDegrees:90});
  for(const [t,expected] of [[.49,['Untimed']],[.5,['Untimed','Timed']],[1.5,['Untimed']],[2,[]]])a.deepEqual(d.activeNotes(s.notes,t).map(n=>n.text),expected);
 });
+test('director notes accept a bounded viewport-height label offset',()=>{
+ const s=scene();
+ for(const value of [-.45,-.2,0,.2,.45]){
+  s.notes[1].labelOffsetY=value;
+  const p=d.director(s);
+  a.equal(p.notes[1].labelOffsetY,value);
+  a.equal('labelOffsetY' in p.notes[0],false);
+  a.deepEqual(d.activeNotes(p.notes,1).at(-1).point,[0,0,1]);
+ }
+ for(const value of [-.451,.451,NaN,Infinity,null,'0.2']){
+  s.notes[1].labelOffsetY=value;
+  a.throws(()=>d.director(s),/labelOffsetY/);
+ }
+});
 test('director rejects unsupported input, traversal, arbitrary URLs/scripts and mismatched references',()=>{
  for(const file of ['../x.glb','x/../a.glb','C:/a.glb','https://example.test/p.glb','//share/x.glb','a\\x.glb','file%2fpath.glb','x.glb.']){const s=scene();s.objects[0].file=file;a.throws(()=>d.director(s));}
  for(const mutate of [s=>s.version=2,s=>s.script='doWork()',s=>s.objects[1].id='station',s=>s.notes[0].object='missing',s=>s.notes[0].end=3,s=>s.camera[1].time=1,s=>s.objects[1].movement[1].time=0]){const s=scene();mutate(s);a.throws(()=>d.director(s));}

@@ -71,11 +71,11 @@
     }
   ],
   "notes": [
-    {"object": "valve", "text": "進氣口", "point": [-0.0301, 0.0025, 0.0048], "start": 0.2, "end": 1.1},
-    {"object": "valve", "text": "橡膠皮膜", "point": [0.0004, 0.0024, 0.0095], "start": 1.1, "end": 2.2333333333333334},
-    {"object": "valve", "text": "支架開孔", "point": [0.0058, 0.0038, 0.0105], "start": 2.2333333333333334, "end": 3.7},
-    {"object": "valve", "text": "氣流出口", "point": [0.0301, 0.0025, 0.0048], "start": 3.7, "end": 4.8},
-    {"object": "valve", "text": "閥座截止", "point": [-0.0023, 0.0024, 0.0095], "start": 6.233333333333333, "end": 12}
+    {"object": "valve", "text": "進氣口", "point": [-0.0301, 0.0025, 0.0048], "labelOffsetY": -0.18, "start": 0.2, "end": 1.1},
+    {"object": "valve", "text": "氟橡膠閥體", "point": [0.0004, 0.0024, 0.0095], "labelOffsetY": -0.18, "start": 1.1, "end": 2.2333333333333334},
+    {"object": "valve", "text": "支架開孔", "point": [0.0058, 0.0038, 0.0105], "labelOffsetY": -0.18, "start": 2.2333333333333334, "end": 3.7},
+    {"object": "valve", "text": "氣流出口", "point": [0.0301, 0.0025, 0.0048], "labelOffsetY": -0.18, "start": 3.7, "end": 4.8},
+    {"object": "valve", "text": "閥座截止", "point": [-0.0023, 0.0024, 0.0095], "labelOffsetY": -0.18, "start": 6.233333333333333, "end": 12}
   ],
   "captions": [
     {"text": "氣體出發｜由左端進氣", "start": 0, "end": 1.1},

@@ -15,7 +15,9 @@ export function visibleNote(note,model,camera,radius,occluders=[model]){
  if(!(dist>0)||[projected.x,projected.y,projected.z].some(v=>!Number.isFinite(v)||v< -1||v>1))return null;
  const tolerance=Math.max(radius*.001,1e-6),ray=new Raycaster(origin,direction.normalize(),0,Math.max(0,dist-tolerance));
  if(occluders.some(root=>ray.intersectObject(root,true).some(h=>h.object.isMesh&&displayed(h.object,root))))return null;
- return {x:(projected.x+1)/2,y:(1-projected.y)/2,text:note.text};
+ const annotation={x:(projected.x+1)/2,y:(1-projected.y)/2,text:note.text};
+ if(note.labelOffsetY!==undefined)annotation.labelOffsetY=note.labelOffsetY;
+ return annotation;
 }
 function wrap(ctx,text,limit){
  const lines=[];let line='';
@@ -33,8 +35,16 @@ export function drawModelNotes(ctx,notes,viewport){
   const bw=Math.ceil(Math.max(...lines.map(l=>ctx.measureText(l).width))+pad*2),bh=lines.length*lh+pad*2;
   if(bh>h-12)continue;
   const spots=[[px+17,py-bh-19],[px-bw-17,py-bh-19],[px+17,py+19],[px-bw-17,py+19]];
+  const {labelOffsetY}=n;
+  if(labelOffsetY){
+   const edge=py+h*labelOffsetY,top=labelOffsetY<0?edge-bh:edge;
+   spots.unshift([px-bw/2,top],[px+17,top],[px-bw-17,top]);
+  }
   const boxes=spots.map(([a,b])=>({x:cl(a,x+6,x+w-bw-6),y:cl(b,y+6,y+h-bh-6)}));
-  const r=boxes.find(a=>!used.some(b=>a.x<b.x+b.w+6&&a.x+bw+6>b.x&&a.y<b.y+b.h+6&&a.y+bh+6>b.y));
+  const r=boxes.find(a=>{
+   if(labelOffsetY&&px>=a.x&&px<=a.x+bw&&py>=a.y&&py<=a.y+bh)return false;
+   return !used.some(b=>a.x<b.x+b.w+6&&a.x+bw+6>b.x&&a.y<b.y+b.h+6&&a.y+bh+6>b.y);
+  });
   if(!r)continue;
   used.push({...r,w:bw,h:bh});
   ctx.strokeStyle='#ffd257';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(cl(px,r.x,r.x+bw),cl(py,r.y,r.y+bh));ctx.stroke();
