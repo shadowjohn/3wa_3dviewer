@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; connect-src 'self' blob: data:; img-src 'self' blob: data:; media-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'none'">
+  <title>3WA 3D 場景播放器</title>
+  <link rel="stylesheet" href="./player.css">
+  <script type="module" src="./player.js"></script>
+</head>
+<body>
+  <main id="player" data-ready="false" data-frame="0" data-camera="director">
+    <h1>3WA 3D 場景播放器</h1>
+    <div id="director-view" aria-label="3D 場景">
+      <img id="cover" alt="" hidden>
+      <canvas id="director-canvas" width="640" height="480"></canvas>
+      <canvas id="director-overlay" width="640" height="480" aria-hidden="true"></canvas>
+      <p id="load-status" role="status">載入 3D 場景中…</p>
+    </div>
+    <div class="controls" role="group" aria-label="播放與視角">
+      <button id="play" type="button" disabled>播放</button>
+      <button id="camera-mode" type="button" aria-pressed="false" disabled>自由轉視角</button>
+      <label class="timeline">
+        <span class="sr-only">時間軸</span>
+        <input id="seek" type="range" min="0" max="0" step="1" value="0" disabled>
+        <output id="time" for="seek">0.00 / 0.00 秒</output>
+      </label>
+      <p id="orbit-guide" hidden>拖曳旋轉，滾輪或雙指縮放。</p>
+    </div>
+    <p id="player-error" role="alert" hidden></p>
+    <p id="caption-text" class="sr-only"></p>
+    <section id="fallback" hidden aria-labelledby="fallback-title">
+      <h2 id="fallback-title">MP4 影片</h2>
+      <video id="fallback-video" controls playsinline preload="none" width="640" height="480"></video>
+      <a id="fallback-link">另開 MP4</a>
+    </section>
+    <noscript>請啟用 JavaScript 以使用 3D 播放器。</noscript>
+  </main>
+</body>
+</html>

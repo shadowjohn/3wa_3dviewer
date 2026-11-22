@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; media-src 'self'; frame-src 'self'; object-src 'none'; base-uri 'none'">
+  <title>3WA Blog · 3D 場景嵌入示範</title>
+  <link rel="stylesheet" href="./blog-example.css">
+  <script type="module" src="./blog-example.js"></script>
+</head>
+<body class="director-blog-page">
+  <main id="blog-example">
+    <h1>3D 場景嵌入示範</h1>
+    <div class="actions">
+      <button id="load-player" type="button" aria-controls="embed-slot">開啟 3D 互動</button>
+      <button id="load-chapter" type="button" aria-controls="embed-slot" hidden></button>
+    </div>
+    <div id="embed-slot" hidden></div>
+    <figure id="cover-only" hidden>
+      <img id="cover" alt="3D 場景封面" width="640" height="480">
+    </figure>
+    <section id="fallback" aria-labelledby="video-title" hidden>
+      <h2 id="video-title">MP4 影片</h2>
+      <video id="fallback-video" controls playsinline preload="none" width="640" height="480"></video>
+      <a id="fallback-link">另開 MP4</a>
+    </section>
+  </main>
+</body>
+</html>

@@ -3,14 +3,15 @@ const {allowedFile}=require('./capture-policy.cjs'),{director}=require('./direct
 const {encoder,run}=require('./turntable-job.cjs'),{encodeArgs}=require('./turntable-policy.cjs');
 async function readScene(scenePath,roots){
  const file=await allowedFile(scenePath,roots,['.json'],65536),root=path.dirname(file);
- const plan=director(JSON.parse((await fs.readFile(file,'utf8')).replace(/^\uFEFF/,''))),models=[];
+ const definition=JSON.parse((await fs.readFile(file,'utf8')).replace(/^\uFEFF/,''));
+ const plan=director(definition),models=[];
  let total=0;
  for(const o of plan.objects){
   const asset=await allowedFile(path.resolve(root,o.file),[root],['.glb'],96*1024**2);
   total+=(await fs.stat(asset)).size;if(total>192*1024**2)throw Error('Director models exceed 192 MB total.');
   models.push(asset);delete o.file;
  }
- return {plan,models};
+ return {plan,models,definition};
 }
 async function directorJob({scenePath,roots,electronPath,packaged=false,signal,preview=false}){
  const {plan}=await readScene(scenePath,roots),ffmpeg=preview?null:await encoder();

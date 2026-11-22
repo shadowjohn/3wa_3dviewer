@@ -100,3 +100,19 @@
 [check-valve-real.scene.json](../examples/view-flow1/check-valve-real.scene.json) 對應 VIEW-VALVE1 v1.0.2。將該工單的 `check_valve_cutaway.glb` 放在腳本旁即可預覽或出片。路徑以公尺設定，小蝌蚪先流到閥片前，在開閥後沿可見剖面經過導流籠開孔。反向在關閉後停於閥片下游面前。路徑和開關行程均為展示用。
 
 [check-valve-assembly.scene.json](../examples/view-flow1/assembly/check-valve-assembly.scene.json) 示範 19 秒的拆解、零件說明和回裝。從倉庫根目錄執行 `node examples/view-flow1/assembly/generate_assembly.cjs` 生成樣片用 GLB。如資產倉庫放在別處，將含有 v1.0.2 組裝及拆解 GLB 的目錄作為命令參數。
+
+### 匯出網頁展示包
+
+以原有 Director JSON 匯出新的靜態展示目錄。先把核准的自含資源 GLB 放到場景指定位置，再執行下列命令。封面接受 PNG／JPEG，備援接受 MP4，兩者都可省略。
+
+```powershell
+npm run export:director-web -- examples/view-flow1/check-valve-real.scene.json ./release/valve-web --cover ./valve-cover.png --mp4 ./valve.mp4 --chapter-label 反向截止 --chapter-seconds 6.233333333333333
+```
+
+輸出目錄的上層須已存在。使用靜態 HTTP(S) 服務整個輸出目錄，或本機執行 `python -m http.server 8080 --bind 127.0.0.1 --directory ./release/valve-web`。入口 `index.html` 使用相對路徑，可搬到任意子目錄。模型名稱會轉成 `assets/model-N.glb`，`scene.json` 保留原本的場景版本和時間軸。
+
+播放器載入時暫停。拖動進度條可逐幀跳播，`?t=6.233333333333333` 可直接定位章節。按「自由轉視角」時固定當前影格，按「回到導演視角」會恢復該影格的導演鏡頭。MP4 匯出與網頁播放共用渲染取樣。
+
+`blog-example.html` 是可直接部署到測試目錄的 3WA Blog 嵌入範例。按「載入 3D」或章節按鈕後，才建立同目錄播放器的 iframe。設定封面及 MP4 時，兩者會和 3D 按鈕一起提供。將範例整合到同來源其他頁面時，HTML 區塊的兩個靜態資源引用需指向展示包內的 `blog-example.css` 與 `blog-example.js`。
+
+桌面和網頁都把驗證後的場景交給 `createDirectorStage`。此模組接收場景、渲染器和 GLB 載入器，以整數影格取樣動畫、路徑、流向、燈光和標註。日後由圖台接入時，可以用相同場景定義及時間軸。

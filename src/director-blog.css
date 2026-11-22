@@ -1,0 +1,66 @@
+.director-blog-page {
+  margin: 0;
+  background: #f3f6f7;
+}
+
+#blog-example {
+  font-family: "Segoe UI", "Microsoft JhengHei", system-ui, sans-serif;
+  color: #1b2937;
+  max-width: 48rem;
+  padding: 1.5rem 1rem 2rem;
+  margin: auto;
+}
+
+#blog-example, #blog-example * { box-sizing: border-box; }
+#blog-example [hidden] { display: none !important; }
+#blog-example h1 { font-size: clamp(1.35rem, 3vw, 1.85rem); margin: 0 0 .85rem; }
+#blog-example h2 { font-size: 1.05rem; margin: 0 0 .65rem; }
+
+#blog-example .actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+#blog-example button {
+  cursor: pointer;
+  min-height: 2.75rem;
+  padding: .5rem .9rem;
+  border: 1px solid #7395a0;
+  border-radius: .45rem;
+  background: #fff;
+  color: #173544;
+  font: inherit;
+}
+
+#blog-example #load-player { border-color: #184453; background: #184453; color: #fff; }
+#blog-example button:hover { border-color: #0b6a75; }
+#blog-example :is(button, a):focus-visible { outline: 2px solid #076d73; outline-offset: 3px; }
+#blog-example a { color: #145a66; }
+
+#blog-example #embed-slot {
+  margin-top: 1rem;
+  overflow: hidden;
+  border-radius: .5rem;
+  container-type: inline-size;
+  background: #101720;
+}
+
+#blog-example iframe {
+  display: block;
+  width: 100%;
+  height: calc(75cqw + 8rem);
+  border: 0;
+}
+
+@container (min-width: 30rem) {
+  #blog-example iframe { height: calc(75cqw + 6.5rem); }
+}
+
+#blog-example :is(#cover-only, #fallback) { margin: 1.2rem 0 0; }
+#blog-example :is(video, img) {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 3;
+  object-fit: contain;
+  background: #19212c;
+  border-radius: .5rem;
+}
+
+#blog-example #fallback-link { display: inline-block; margin-top: .55rem; }

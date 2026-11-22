@@ -3,11 +3,9 @@ import {evidenceImages} from './capture-evidence.mjs';
 import turntablePolicy from './turntable-policy.cjs';
 import modelNotesPolicy from './model-notes-policy.cjs';
 import pathPolicy from './camera-path.cjs';
-import {bindDirectorClip} from './director-animation.mjs';
-import {createDirectorFlow} from './director-flow.mjs';
-import directorPolicy from './director-policy.cjs';
+import {createDirectorStage,directorEnvironment} from './director-stage.mjs';
 import captionsPolicy from './timed-captions.cjs';
-import {pickModelNote,projectedModelNotes,visibleNote,drawModelNotes,drawTimedCaption} from './model-notes.mjs';
+import {pickModelNote,projectedModelNotes,drawModelNotes,drawTimedCaption} from './model-notes.mjs';
 import {buildTileset,updateTileset} from './tileset-renderer.mjs';
 import {parseMesh} from './mesh-loaders.mjs';
 import * as THREE from 'three';
@@ -18,7 +16,6 @@ import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {DRACOLoader} from 'three/addons/loaders/DRACOLoader.js';
 import {KTX2Loader} from 'three/addons/loaders/KTX2Loader.js';
 import {MeshoptDecoder} from 'three/addons/libs/meshopt_decoder.module.js';
-import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
 const $=id=>document.getElementById(id),viewport=$('viewport');
 let vrm=null,tilesRuntime=null,turntableRender=false,notes=[],picking=false,noteTick=0;
 let renderer,controls,model,grid,mixer,seq=0,radius=1,meta,frames=0,animationCount=0,draco,ktx;
@@ -71,7 +68,7 @@ try{
  renderer=new THREE.WebGLRenderer({antialias:true,alpha:false});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;viewport.prepend(renderer.domElement);
  renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();error('GPU 顯示環境中斷，請重開 viewer。');});
  controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.dampingFactor=.08;
- const pmrem=new THREE.PMREMGenerator(renderer),room=new RoomEnvironment();scene.environment=pmrem.fromScene(room,.04).texture;room.dispose();pmrem.dispose();scene.add(new THREE.HemisphereLight(0xddeeff,0x444455,.6));
+ window.addEventListener('pagehide',directorEnvironment(renderer,scene),{once:true});
  draco=new DRACOLoader().setDecoderPath('decoders/draco/');draco.setWorkerLimit(2);ktx=new KTX2Loader().setTranscoderPath('decoders/basis/').detectSupport(renderer);ktx.setWorkerLimit(2);
  new ResizeObserver(()=>{if(turntableRender)return;camera.aspect=viewport.clientWidth/viewport.clientHeight;camera.updateProjectionMatrix();renderer.setSize(viewport.clientWidth,viewport.clientHeight);}).observe(viewport);
  renderer.setAnimationLoop(()=>{if(turntableRender)return;timer.update();const dt=Math.min(timer.getDelta(),.1);if($('animation').checked){if(mixer)mixer.update(dt);vrm?.update(dt);}controls.autoRotate=$('rotate').checked;controls.update(dt);if(tilesRuntime){container.updateMatrixWorld(true);updateTileset(tilesRuntime.root,camera,viewport.clientHeight,16,container.matrixWorld);}renderer.render(scene,camera);if(notes.length&&performance.now()-noteTick>65)drawLiveNotes();frames++;});
@@ -133,122 +130,33 @@ function directorLayout(preview){
  panel.append(button,seek,clock);viewport.append(panel);
  return {element:panel,button,seek,clock};
 }
-function directorLighting(plan,groups){
- if(!plan)return null;
- const bounds=new THREE.Box3(),v=new THREE.Vector3(),c=new THREE.Vector3(),d=new THREE.Vector3();
- for(const g of groups){
-  const extent=Math.max(.5,g.envelope);
-  for(const p of (g.o.movement?.map(k=>k.position)??[g.o.position])){
-   c.fromArray(p).add(g.pivot);
-   bounds.expandByPoint(v.copy(c).addScalar(extent));
-   bounds.expandByPoint(v.copy(c).addScalar(-extent));
-  }
- }
- const sphere=bounds.getBoundingSphere(new THREE.Sphere()),r=Math.max(1,sphere.radius*1.08),distance=2.25*r;
- const sun=new THREE.DirectionalLight(0xffffff,1);sun.castShadow=plan.shadows;
- sun.target.position.copy(sphere.center);scene.add(sun,sun.target);
- if(plan.shadows){
-  renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFShadowMap;
-  sun.shadow.mapSize.set(1024,1024);sun.shadow.normalBias=r/3200;sun.shadow.bias=-.0001;
-  Object.assign(sun.shadow.camera,{left:-r,right:r,top:r,bottom:-r,near:.01,far:distance+r*1.2});
-  sun.shadow.camera.updateProjectionMatrix();
-  for(const g of groups)g.mesh.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
- }
- return t=>{
-  const l=directorPolicy.sampleLight(plan,t);
-  d.fromArray(l.direction).normalize();
-  sun.position.copy(sphere.center).addScaledVector(d,distance);
-  sun.shadow.camera.up.set(0,Math.abs(d.y)>.999999?0:1,Math.abs(d.y)>.999999?1:0);
-  sun.intensity=l.intensity;sun.color.setRGB(...l.rgb.map(v=>v/255),THREE.SRGBColorSpace);
- };
-}
 async function renderDirector(cfg){
  const job=cfg.director;turntableRender=true;renderer.setAnimationLoop(null);controls.enabled=false;
  if(!cfg.preview)renderer.setPixelRatio(1);
- const panel=directorLayout(cfg.preview),groups=[],models=[],byId=new Map();
+ const panel=directorLayout(cfg.preview);
  const manager=new THREE.LoadingManager();manager.setURLModifier(url=>{if(/^(data:|blob:)/.test(url))return url;throw Error('Director GLB must contain its resources.');});
  const loader=new GLTFLoader(manager).setDRACOLoader(draco).setKTX2Loader(ktx).setMeshoptDecoder(MeshoptDecoder);
- for(let i=0;i<job.objects.length;i++){
-  const o=job.objects[i],p=await window.viewer.directorModel(i),a=p.data;
-  const g=await loader.parseAsync(a.buffer.slice(a.byteOffset,a.byteOffset+a.byteLength),''),mesh=g.scene,holder=new THREE.Group(),pivot=new THREE.Group();
-  pivot.position.fromArray(o.pivot).negate();pivot.add(mesh);holder.add(pivot);scene.add(holder);holder.updateMatrixWorld(true);
-  const box=new THREE.Box3().setFromObject(mesh),bounded=box.getBoundingSphere(new THREE.Sphere()),r=bounded.radius;
-  if(!Number.isFinite(r)||!(r>0))throw Error('Invalid scene model bounds.');
-  const item={o,mesh,holder,pivot:new THREE.Vector3(...o.pivot),radius:r,envelope:r+bounded.center.length(),axis:o.spin?new THREE.Vector3(...o.spin.axis).normalize():null};
-  item.clip=bindDirectorClip(mesh,g.animations,o.animation,o.id);
-  groups.push(item);models.push(mesh);byId.set(o.id,item);
- }
- const flows=(job.flows??[]).map(track=>{
-  const effect=createDirectorFlow(track);
-  const parent=track.object===null?scene:byId.get(track.object).mesh;
-  parent.add(effect.root);
-  return effect;
- });
- const disposeFlows=()=>{for(const flow of flows)flow.dispose();};
- if(panel&&flows.length)window.addEventListener('pagehide',disposeFlows,{once:true});
- const light=directorLighting(job.lighting,groups);
- const view=new THREE.PerspectiveCamera(45,1,.001,1000),aim=new THREE.Vector3(),axisRotation=new THREE.Quaternion(),q=new THREE.Quaternion(),e=new THREE.Euler();
- const annotated=job.notes.length||job.captions.length;
- let width=0,height=0;
- function sample(index,w,h,cameraOverride){
-  if(w!==width||h!==height){
-   renderer.setSize(w,h,!!panel);width=w;height=h;
-   if(panel){noteOverlay.width=w;noteOverlay.height=h;noteOverlay.style.height=h+'px';noteOverlay.hidden=!annotated;}
-  }
-  const t=index/job.fps,pose=cameraOverride??directorPolicy.directorCamera(job,index);
-  for(const g of groups){
-   const x=directorPolicy.placement(g.o,t);
-   g.holder.position.fromArray(x.position).add(g.pivot);
-   q.setFromEuler(e.set(...x.rotation.map(THREE.MathUtils.degToRad)));
-   if(g.axis)q.multiply(axisRotation.setFromAxisAngle(g.axis,THREE.MathUtils.degToRad(x.spinDegrees)));
-   g.holder.quaternion.copy(q);g.clip?.(t);
-  }
-  for(const flow of flows)flow.update(t);
-  light?.(t);scene.updateMatrixWorld(true);view.position.fromArray(pose.position);aim.fromArray(pose.lookAt);
-  view.up.set(0,Math.abs(view.position.clone().sub(aim).normalize().y)>.999999?0:1,1e-9);
-  view.lookAt(aim);view.aspect=w/h;view.fov=pose.fov;view.updateProjectionMatrix();view.updateMatrixWorld(true);
-  renderer.render(scene,view);
-  const active=directorPolicy.activeNotes(job.notes,t).map(n=>{const g=byId.get(n.object);return visibleNote(n,g.mesh,view,g.radius,models);}).filter(Boolean);
-  return {active,caption:captionsPolicy.captionAt(job.captions,t)};
- }
- let blendA,blendB;
- function blendFrame(i,w,h,blend){
-  if(!blendA||blendA.width!==w||blendA.height!==h){blendA=noteCanvas(w,h);blendB=noteCanvas(w,h);}
-  const viewport={x:0,y:0,width:w,height:h};
-  const collect=(canvas,pose)=>{const {active,caption}=sample(i,w,h,pose);return compositeNotes(canvas,[{notes:active,viewport}],caption);};
-  collect(blendA,blend.previous);collect(blendB);
-  const ctx=blendA.getContext('2d');ctx.save();ctx.globalAlpha=blend.mix;ctx.drawImage(blendB,0,0);ctx.restore();
-  return blendA;
- }
+ const stage=await createDirectorStage({job,renderer,scene,loader,readModel:async i=>(await window.viewer.directorModel(i)).data});
  if(panel){
   let base=performance.now(),index=0,playing=true;
   panel.seek.max=String(job.frameCount-1);
   panel.button.onclick=()=>{playing=!playing;base=performance.now()-1000*index/job.fps;panel.button.textContent=playing?'Pause':'Play';};
   panel.seek.oninput=()=>{index=Number(panel.seek.value);base=performance.now()-1000*index/job.fps;};
+  window.addEventListener('pagehide',()=>{renderer.setAnimationLoop(null);stage.dispose();},{once:true});
   renderer.setAnimationLoop(now=>{
    if(playing)index=Math.max(0,Math.floor((now-base)*job.fps/1000))%job.frameCount;
    const w=viewport.clientWidth,h=viewport.clientHeight-panel.element.offsetHeight-10;if(w<=0||h<=0)return;
-   const blend=directorPolicy.directorBlend(job,index),c=noteOverlay.getContext('2d');
-   if(blend){const img=blendFrame(index,w,h,blend);noteOverlay.hidden=false;c.clearRect(0,0,w,h);c.drawImage(img,0,0);}
-   else{
-    const {active,caption}=sample(index,w,h);noteOverlay.hidden=!annotated;
-    if(annotated){c.clearRect(0,0,w,h);drawModelNotes(c,active,{x:0,y:0,width:w,height:h});drawTimedCaption(c,caption,w,h);}
-   }
+   stage.draw(index,w,h,noteOverlay);
    panel.seek.value=String(index);panel.clock.textContent=(index/job.fps).toFixed(2)+' s';
   });
   return;
  }
- const board=annotated?noteCanvas(job.width,job.height):null,viewportRect={x:0,y:0,width:job.width,height:job.height};
- for(let i=0;i<job.frameCount;i++){
-  const blend=directorPolicy.directorBlend(job,i);let frame;
-  if(blend)frame=blendFrame(i,job.width,job.height,blend);
-  else{
-   const {active,caption}=sample(i,job.width,job.height);
-   frame=board?compositeNotes(board,[{notes:active,viewport:viewportRect}],caption):renderer.domElement;
+ try{
+  for(let i=0;i<job.frameCount;i++){
+   const frame=stage.capture(i,job.width,job.height);
+   await window.viewer.turntableFrame(i,frame.toDataURL('image/png'));
   }
-  await window.viewer.turntableFrame(i,frame.toDataURL('image/png'));
- }
- disposeFlows();
+ }finally{stage.dispose();}
  await window.viewer.captureFinish({ok:true});
 }
 async function renderTurntable(cfg){
