@@ -111,3 +111,6 @@ video { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; backgrou
 
 [data-embed="true"] { padding: 0; }
 [data-embed="true"] h1, [data-embed="true"] #fallback { display: none; }
+
+#player.fit-embed { max-width: none; padding: 0 0 .375rem; }
+.fit-embed .controls { margin: .5rem .375rem 0; }

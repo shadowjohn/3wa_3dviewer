@@ -115,6 +115,28 @@ def play_pause_seek(page, last, touch=None):
     return selected
 
 
+def check_early_animation_frame(page):
+    ready(page)
+    first_frame = page.locator('#play').evaluate("""button => new Promise((resolve, reject) => {
+        const raf = window.requestAnimationFrame;
+        const earlyTimestamp = performance.now() - 10;
+        window.requestAnimationFrame = callback => {
+            window.requestAnimationFrame = raf;
+            return raf(() => {
+                try {
+                    callback(earlyTimestamp);
+                    button.click();
+                    resolve(document.querySelector('#player').dataset.frame);
+                } catch (error) {
+                    reject(error);
+                }
+            });
+        };
+        button.click();
+    })""")
+    assert first_frame == '0', f'early animation timestamp moved the playhead to {first_frame}'
+
+
 def camera_round_trip(page, selected, touch=None):
     player, view = page.locator('#player'), page.locator('#director-view')
     toggle = page.locator('#camera-mode')
@@ -215,6 +237,7 @@ def verify(args, proof):
         page = desktop.new_page()
         page.on('pageerror', lambda error: errors.append(str(error)))
         page.goto(f'{base}index.html')
+        check_early_animation_frame(page)
         results['desktop_frame'] = play_pause_seek(page, last)
         camera_round_trip(page, results['desktop_frame'])
         for seconds, frame in [('6.233333333333333', 187), ('8.2', 246), ('-5', 0), ('999', last), ('invalid', 0)]:

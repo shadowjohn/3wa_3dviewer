@@ -24,6 +24,15 @@ const params = new URLSearchParams(location.search);
 const runtimeBase = new URL('.', import.meta.url);
 player.dataset.embed = String(params.get('embed') === '1');
 
+const hostFrame = window.frameElement;
+if (player.dataset.embed === 'true' && hostFrame?.matches('iframe[data-fit-player]')) {
+  player.classList.add('fit-embed');
+  // Controls wrap on narrow screens and the orbit guide adds another row.
+  new ResizeObserver(() => {
+    hostFrame.style.height = Math.ceil(player.getBoundingClientRect().height) + 'px';
+  }).observe(player);
+}
+
 function assetUrl(filename) {
   if (!player.dataset.assetEndpoint) return new URL(filename, runtimeBase);
   const url = new URL(player.dataset.assetEndpoint, location.href);
@@ -150,7 +159,9 @@ async function start() {
   }
 
   function tick(now) {
-    const next = Math.min(last, startFrame + Math.floor((now - startedAt) * fps / 1000));
+    // A frame's timestamp can precede the play click handled in that same frame.
+    const elapsed = Math.max(0, now - startedAt);
+    const next = Math.min(last, startFrame + Math.floor(elapsed * fps / 1000));
     if (frame !== next) {
       frame = next;
       draw();
