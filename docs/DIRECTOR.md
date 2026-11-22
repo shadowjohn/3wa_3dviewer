@@ -58,3 +58,31 @@
 `end` 是全片上的截止時間，必須是 30 fps 整數影格，逐段增加，末段等於場景總秒數。各鏡頭的相機關鍵影格使用段內時間，從 0 到該段長度。未設轉場時，新的鏡頭在切點的第一幀立即生效。
 
 可選 `dissolveInFrames`（2～15 幀、短於所屬鏡頭）：在後一鏡頭開始時，以前一鏡頭的末端相機姿勢疊到新鏡頭。兩邊取景的物件、動畫、燈光和標註仍是**同一個全片影格的時間**，不倒回或重設；畫面淡疊不延長影片。第一鏡頭不能設定疊化。這是同一個場景的相機轉場，不是跨場景合成。
+
+
+### 流向軌道
+
+`flows` 可省略，最多 4 條。每條需要 `id`、`medium`（`air`／`water`）、2–64 個 `points` 和 1–8 段 `stages`。路徑使用 Y-up 場景單位。填 `object` 時，路徑與閥座改用指定 GLB 根節點的局部座標，跟隨物件擺放與轉動。
+
+```json
+{
+  "id": "pipe",
+  "object": "valve",
+  "medium": "water",
+  "points": [[-2, 0, 0], [0, 0, 0], [2, 0, 0]],
+  "stages": [
+    {"start": 1, "end": 4, "direction": "forward", "speed": 1.5},
+    {"start": 4, "end": 6, "direction": "forward", "speed": 0},
+    {"start": 6, "end": 12, "direction": "reverse", "speed": 1.2,
+     "stop": {"distance": 2, "normal": [1, 0, 0]}}
+  ]
+}
+```
+
+`speed` 的單位是每秒場景單位（0–100），`direction` 決定沿路徑正向或反向。每段顯示時間包含開始並排除結束，段與段之間可留空。連續同向且截止設定相同時，停流段承接粒子位置。截止位置 `stop.distance` 是從第一點沿折線量到閥座的距離，`normal` 指向正向出口。箭頭和粒子的可見幾何會留在閥座來流側。
+
+`arrows`／`particles` 可各自設為 `false`，`arrowCount` 可設 1–12（預設 7），`particleCount` 可設 1–96（預設 48）。`seed` 以固定整數選定粒子分布。開關閥由物件的動畫片段控制，在同一份腳本排好過流與停流段。桌面預覽與 MCP 的 `record_director_scene` 使用相同的取樣時間和輸入格式。
+
+可用 `appearance` 調整粒子輪廓和色澤，速度仍由 `stages` 設定。`shape` 支援 `drop`（原本的水滴）、`bead`（圓粒）、`viscous`（延展的濃液滴）與 `mist`（半透明霧粒）。`arrowColor` 和 `particleColor` 分別接受 `#RRGGBB`，`opacity` 控制粒子透明度，範圍大於 0 且不超過 1。三款同鏡位樣片見 [style-comparison.scene.json](../examples/view-flow1/style-comparison.scene.json)。
+
+合成驗證場景在 [examples/view-flow1/check-valve.scene.json](../examples/view-flow1/check-valve.scene.json)。用同目錄的 [generate_fixture.py](../examples/view-flow1/generate_fixture.py) 匯出合成 GLB，將該 GLB 與腳本放在同一目錄即可預覽或出片。

@@ -4,6 +4,7 @@ import turntablePolicy from './turntable-policy.cjs';
 import modelNotesPolicy from './model-notes-policy.cjs';
 import pathPolicy from './camera-path.cjs';
 import {bindDirectorClip} from './director-animation.mjs';
+import {createDirectorFlow} from './director-flow.mjs';
 import directorPolicy from './director-policy.cjs';
 import captionsPolicy from './timed-captions.cjs';
 import {pickModelNote,projectedModelNotes,visibleNote,drawModelNotes,drawTimedCaption} from './model-notes.mjs';
@@ -130,7 +131,7 @@ function directorLayout(preview){
  panel.style.cssText='position:absolute;inset:auto 10px 10px;z-index:10;background:#172132eb;padding:6px;display:flex;gap:10px;align-items:center;border-radius:7px';
  button.textContent='Pause';button.type='button';seek.type='range';seek.min='0';seek.step='1';seek.style.flex='1';seek.setAttribute('aria-label','Scene frame');clock.setAttribute('aria-live','off');
  panel.append(button,seek,clock);viewport.append(panel);
- return {button,seek,clock};
+ return {element:panel,button,seek,clock};
 }
 function directorLighting(plan,groups){
  if(!plan)return null;
@@ -177,6 +178,14 @@ async function renderDirector(cfg){
   item.clip=bindDirectorClip(mesh,g.animations,o.animation,o.id);
   groups.push(item);models.push(mesh);byId.set(o.id,item);
  }
+ const flows=(job.flows??[]).map(track=>{
+  const effect=createDirectorFlow(track);
+  const parent=track.object===null?scene:byId.get(track.object).mesh;
+  parent.add(effect.root);
+  return effect;
+ });
+ const disposeFlows=()=>{for(const flow of flows)flow.dispose();};
+ if(panel&&flows.length)window.addEventListener('pagehide',disposeFlows,{once:true});
  const light=directorLighting(job.lighting,groups);
  const view=new THREE.PerspectiveCamera(45,1,.001,1000),aim=new THREE.Vector3(),axisRotation=new THREE.Quaternion(),q=new THREE.Quaternion(),e=new THREE.Euler();
  const annotated=job.notes.length||job.captions.length;
@@ -184,7 +193,7 @@ async function renderDirector(cfg){
  function sample(index,w,h,cameraOverride){
   if(w!==width||h!==height){
    renderer.setSize(w,h,!!panel);width=w;height=h;
-   if(panel){noteOverlay.width=w;noteOverlay.height=h;noteOverlay.hidden=!annotated;}
+   if(panel){noteOverlay.width=w;noteOverlay.height=h;noteOverlay.style.height=h+'px';noteOverlay.hidden=!annotated;}
   }
   const t=index/job.fps,pose=cameraOverride??directorPolicy.directorCamera(job,index);
   for(const g of groups){
@@ -194,6 +203,7 @@ async function renderDirector(cfg){
    if(g.axis)q.multiply(axisRotation.setFromAxisAngle(g.axis,THREE.MathUtils.degToRad(x.spinDegrees)));
    g.holder.quaternion.copy(q);g.clip?.(t);
   }
+  for(const flow of flows)flow.update(t);
   light?.(t);scene.updateMatrixWorld(true);view.position.fromArray(pose.position);aim.fromArray(pose.lookAt);
   view.up.set(0,Math.abs(view.position.clone().sub(aim).normalize().y)>.999999?0:1,1e-9);
   view.lookAt(aim);view.aspect=w/h;view.fov=pose.fov;view.updateProjectionMatrix();view.updateMatrixWorld(true);
@@ -217,7 +227,7 @@ async function renderDirector(cfg){
   panel.seek.oninput=()=>{index=Number(panel.seek.value);base=performance.now()-1000*index/job.fps;};
   renderer.setAnimationLoop(now=>{
    if(playing)index=Math.max(0,Math.floor((now-base)*job.fps/1000))%job.frameCount;
-   const w=viewport.clientWidth,h=viewport.clientHeight;if(!w||!h)return;
+   const w=viewport.clientWidth,h=viewport.clientHeight-panel.element.offsetHeight-10;if(w<=0||h<=0)return;
    const blend=directorPolicy.directorBlend(job,index),c=noteOverlay.getContext('2d');
    if(blend){const img=blendFrame(index,w,h,blend);noteOverlay.hidden=false;c.clearRect(0,0,w,h);c.drawImage(img,0,0);}
    else{
@@ -238,6 +248,7 @@ async function renderDirector(cfg){
   }
   await window.viewer.turntableFrame(i,frame.toDataURL('image/png'));
  }
+ disposeFlows();
  await window.viewer.captureFinish({ok:true});
 }
 async function renderTurntable(cfg){

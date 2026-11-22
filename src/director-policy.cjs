@@ -2,8 +2,70 @@ const {keyframes,poseAt}=require('./camera-path.cjs'),{modelNotes}=require('./mo
 const FPS=30,keys=(v,fields)=>v&&typeof v==='object'&&!Array.isArray(v)&&Object.keys(v).every(k=>fields.includes(k));
 const vector=(v,max=100)=>Array.isArray(v)&&v.length===3&&v.every(n=>Number.isFinite(n)&&Math.abs(n)<=max);
 const vec=(v,d,m)=>{if(v===undefined)return d;if(!vector(v,m))throw Error('Invalid director vector');return v;};
+function flowAppearance(raw,medium){
+ if(raw===undefined)return null;
+ if(!keys(raw,['shape','arrowColor','particleColor','opacity']))throw Error('Invalid flow appearance.');
+ const {shape=medium==='water'?'drop':'bead',arrowColor,particleColor,opacity}=raw;
+ const validColor=value=>value===undefined||(typeof value==='string'&&/^#[\da-f]{6}$/i.test(value));
+ if(!['drop','bead','viscous','mist'].includes(shape)||!validColor(arrowColor)||!validColor(particleColor)||
+    (opacity!==undefined&&(!Number.isFinite(opacity)||opacity<=0||opacity>1))){
+  throw Error('Invalid flow shape, color or particle opacity.');
+ }
+ return {shape,arrowColor:arrowColor??null,particleColor:particleColor??null,opacity:opacity??null};
+}
+function flowPlan(raw,objectIds,seconds){
+ if(raw===undefined)return [];
+ if(!Array.isArray(raw)||raw.length>4)throw Error('Director supports up to 4 flow tracks.');
+ const ids=new Set();
+ return raw.map(track=>{
+  if(!keys(track,['id','object','points','medium','seed','arrows','particles','arrowCount','particleCount','stages','appearance'])||
+     typeof track.id!=='string'||!/^[a-z][a-z0-9_-]{0,31}$/.test(track.id)||ids.has(track.id)){
+   throw Error('Invalid or duplicate flow track ID.');
+  }
+  const {id,object=null,points,medium,seed=1,arrows=true,particles=true,arrowCount=7,particleCount=48,stages}=track;
+  ids.add(id);
+  if((track.object!==undefined&&!objectIds.has(object))||!['air','water'].includes(medium)||
+     !Number.isInteger(seed)||seed<0||seed>0xffffffff||typeof arrows!=='boolean'||typeof particles!=='boolean'||
+     !Number.isInteger(arrowCount)||arrowCount<1||arrowCount>12||!Number.isInteger(particleCount)||particleCount<1||particleCount>96){
+   throw Error('Invalid flow target, medium, seed or count.');
+  }
+  if(!Array.isArray(points)||points.length<2||points.length>64||!points.every(p=>vector(p))){
+   throw Error('Flow path must contain 2 to 64 finite 3D points.');
+  }
+  let length=0;
+  for(let i=1;i<points.length;i++){
+   const a=points[i-1],b=points[i];
+   const segment=Math.hypot(b[0]-a[0],b[1]-a[1],b[2]-a[2]);
+   if(segment<.0001)throw Error('Flow path contains a zero-length segment.');
+   length+=segment;
+  }
+  if(!Array.isArray(stages)||stages.length<1||stages.length>8)throw Error('Flow track requires 1 to 8 stages.');
+  let previousEnd=0;
+  const phases=stages.map(stage=>{
+   if(!keys(stage,['start','end','direction','speed','stop'])||!Number.isFinite(stage.start)||
+      !Number.isFinite(stage.end)||stage.start<previousEnd||stage.start>=stage.end||stage.end>seconds||
+      !['forward','reverse'].includes(stage.direction)||!Number.isFinite(stage.speed)||stage.speed<0||stage.speed>100){
+    throw Error('Invalid flow stage, time window, direction or speed.');
+   }
+   const {start,end,speed}=stage;
+   previousEnd=end;
+   let stop=null;
+   if(stage.stop!==undefined){
+    const plane=stage.stop;
+    if(!keys(plane,['distance','normal'])||!Number.isFinite(plane.distance)||plane.distance<=0||plane.distance>=length||
+       !vector(plane.normal,1)||Math.hypot(...plane.normal)<.0001){
+     throw Error('Invalid flow stop plane.');
+    }
+    const magnitude=Math.hypot(...plane.normal);
+    stop={distance:plane.distance,normal:plane.normal.map(n=>n/magnitude)};
+   }
+   return {start,end,direction:stage.direction==='forward'?1:-1,speed,stop};
+  });
+  return {id,object,points,medium,seed,arrows,particles,arrowCount,particleCount,stages:phases,appearance:flowAppearance(track.appearance,medium)};
+ });
+}
 function director(input){
- if(!keys(input,['version','seconds','camera','objects','notes','captions','lighting','shots'])||input.version!==1)throw Error('Unsupported scene script version or fields.');
+ if(!keys(input,['version','seconds','camera','objects','notes','captions','lighting','shots','flows'])||input.version!==1)throw Error('Unsupported scene script version or fields.');
  const {seconds}=input,frameCount=Math.round(seconds*FPS);
  if(!Number.isFinite(seconds)||seconds<1||seconds>20||Math.abs(seconds*FPS-frameCount)>1e-8)throw Error('Director duration must be 1 to 20 seconds in whole frames.');
  const {camera,shots}=shotPlan(input,frameCount,seconds);
@@ -38,6 +100,7 @@ function director(input){
   }
   return {id:o.id,file:o.file,position,rotation,pivot,spin,movement,animation};
  });
+ const flows=flowPlan(input.flows,ids,seconds);
  const n=input.notes??[];
  if(!Array.isArray(n)||n.length>12)throw Error('Up to 12 scene notes.');
  const notes=n.map(a=>{
@@ -46,7 +109,7 @@ function director(input){
   if(!Number.isFinite(start)||!Number.isFinite(end)||start<0||end<=start||end>seconds)throw Error('Invalid scene note time window.');
   return {...b,object:a.object,start,end};
  });
- return {seconds,frameCount,fps:FPS,width:640,height:480,camera,shots,objects,notes,lighting:lightingPlan(input.lighting,seconds),captions:captions(input.captions,seconds)};
+ return {seconds,frameCount,fps:FPS,width:640,height:480,camera,shots,objects,notes,flows,lighting:lightingPlan(input.lighting,seconds),captions:captions(input.captions,seconds)};
 }
 function shotPlan(input,frameCount,seconds){
  if(input.shots===undefined){

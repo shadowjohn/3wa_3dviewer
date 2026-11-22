@@ -1,0 +1,87 @@
+{
+  "version": 1,
+  "seconds": 12,
+  "camera": [
+    {"time": 0, "position": [0.62, 0.42, 8.75], "lookAt": [0, 0.05, 0], "fov": 39},
+    {"time": 12, "position": [0.62, 0.42, 8.75], "lookAt": [0, 0.05, 0], "fov": 39}
+  ],
+  "objects": [
+    {
+      "id": "drop-pipe",
+      "file": "synthetic-valve.glb",
+      "position": [0, 1.54, 0],
+      "animation": {"clip": "Valve_OpenClose", "loop": "once"}
+    },
+    {
+      "id": "viscous-pipe",
+      "file": "synthetic-valve.glb",
+      "position": [0, 0, 0],
+      "animation": {"clip": "Valve_OpenClose", "loop": "once"}
+    },
+    {
+      "id": "mist-pipe",
+      "file": "synthetic-valve.glb",
+      "position": [0, -1.54, 0],
+      "animation": {"clip": "Valve_OpenClose", "loop": "once"}
+    }
+  ],
+  "lighting": {"direction": [1, 4, 5], "intensity": 2.2, "color": "#f6faff"},
+  "notes": [
+    {"object": "drop-pipe", "text": "水滴", "point": [3.04, 0.06, 0.57]},
+    {"object": "viscous-pipe", "text": "黏流", "point": [3.04, 0.06, 0.57]},
+    {"object": "mist-pipe", "text": "霧粒", "point": [3.04, 0.06, 0.57]}
+  ],
+  "flows": [
+    {
+      "id": "aqua-drops",
+      "object": "drop-pipe",
+      "points": [[-2.65, -0.03, 0.16], [0, -0.03, 0.16], [2.65, -0.03, 0.16]],
+      "medium": "water",
+      "seed": 816,
+      "arrowCount": 5,
+      "particleCount": 38,
+      "appearance": {"shape": "drop", "arrowColor": "#18D9BF", "particleColor": "#9BF7FE", "opacity": 1},
+      "stages": [
+        {"start": 1.0333333333333334, "end": 4, "direction": "forward", "speed": 1.65},
+        {"start": 4, "end": 6, "direction": "forward", "speed": 0},
+        {"start": 6, "end": 12, "direction": "reverse", "speed": 1.1, "stop": {"distance": 2.65, "normal": [1, 0, 0]}}
+      ]
+    },
+    {
+      "id": "amber-viscous",
+      "object": "viscous-pipe",
+      "points": [[-2.65, -0.03, 0.16], [0, -0.03, 0.16], [2.65, -0.03, 0.16]],
+      "medium": "water",
+      "seed": 816,
+      "arrowCount": 5,
+      "particleCount": 25,
+      "appearance": {"shape": "viscous", "arrowColor": "#FFB45A", "particleColor": "#FFD398", "opacity": 0.94},
+      "stages": [
+        {"start": 1.0333333333333334, "end": 4, "direction": "forward", "speed": 1.65},
+        {"start": 4, "end": 6, "direction": "forward", "speed": 0},
+        {"start": 6, "end": 12, "direction": "reverse", "speed": 1.1, "stop": {"distance": 2.65, "normal": [1, 0, 0]}}
+      ]
+    },
+    {
+      "id": "lilac-mist",
+      "object": "mist-pipe",
+      "points": [[-2.65, -0.03, 0.16], [0, -0.03, 0.16], [2.65, -0.03, 0.16]],
+      "medium": "air",
+      "seed": 816,
+      "arrowCount": 5,
+      "particleCount": 50,
+      "appearance": {"shape": "mist", "arrowColor": "#BBB9FF", "particleColor": "#D7D6FF", "opacity": 0.56},
+      "stages": [
+        {"start": 1.0333333333333334, "end": 4, "direction": "forward", "speed": 1.65},
+        {"start": 4, "end": 6, "direction": "forward", "speed": 0},
+        {"start": 6, "end": 12, "direction": "reverse", "speed": 1.1, "stop": {"distance": 2.65, "normal": [1, 0, 0]}}
+      ]
+    }
+  ],
+  "captions": [
+    {"text": "樣式對照 ｜ 開閥", "start": 0, "end": 1.0333333333333334},
+    {"text": "樣式對照 ｜ 正向通過", "start": 1.0333333333333334, "end": 4},
+    {"text": "樣式對照 ｜ 停流", "start": 4, "end": 6},
+    {"text": "樣式對照 ｜ 反向截止", "start": 6, "end": 12}
+  ]
+}

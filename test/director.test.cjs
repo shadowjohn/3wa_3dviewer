@@ -99,3 +99,48 @@ test('optional dissolve blends only the planned boundary frames, using the outgo
  for(const bad of [1,16,-1,'6']){s.shots[1].dissolveInFrames=bad;a.throws(()=>d.director(s));}
  s.shots[1].dissolveInFrames=0;s.shots[0].dissolveInFrames=6;a.throws(()=>d.director(s));
 });
+
+const flowTrack=()=>({
+ id:'pipe',object:'station',points:[[-2,0,0],[0,0,0],[2,0,0]],medium:'water',
+ stages:[{start:0,end:1,direction:'forward',speed:1},
+  {start:1,end:2,direction:'reverse',speed:1,stop:{distance:2,normal:[.5,0,0]}}]
+});
+test('flow tracks are opt-in and compile stages, model anchors and display controls',()=>{
+ a.deepEqual(d.director(scene()).flows,[]);
+ const s=scene(),track=flowTrack();
+ s.flows=[track,{...track,id:'air',object:undefined,medium:'air',arrows:false,particleCount:14}];
+ const [water,air]=d.director(s).flows;
+ a.equal(water.object,'station');
+ a.deepEqual(water.stages,[{start:0,end:1,direction:1,speed:1,stop:null},
+  {start:1,end:2,direction:-1,speed:1,stop:{distance:2,normal:[1,0,0]}}]);
+ a.deepEqual([air.object,air.medium,air.arrows,air.particles,air.particleCount],[null,'air',false,true,14]);
+});
+test('flow tracks reject malformed paths, excessive resources and invalid stage windows',()=>{
+ for(const mutate of [
+  s=>s.flows.push(s.flows[0]), s=>s.flows[0].object='missing', s=>s.flows[0].medium='unknown',
+  s=>s.flows[0].particleCount=97, s=>s.flows[0].arrowCount=13, s=>s.flows[0].seed=-1,
+  s=>s.flows[0].points[1]=s.flows[0].points[0], s=>s.flows[0].points[1][0]=Infinity,
+  s=>s.flows[0].stages[1].start=.9, s=>s.flows[0].stages[1].end=3,
+  s=>s.flows[0].stages[0].speed=-1, s=>s.flows[0].stages[1].stop.distance=5,
+  s=>s.flows[0].stages[1].stop.normal=[0,0,0], s=>s.flows[0].script='unexpected',
+ ]){
+  const s=scene();s.flows=[flowTrack()];mutate(s);
+  a.throws(()=>d.director(s),/flow/i);
+ }
+});
+
+
+test('flow appearance is optional and compiles a named profile with explicit colors',()=>{
+ const s=scene();
+ s.flows=[flowTrack()];
+ a.equal(d.director(s).flows[0].appearance,null);
+ s.flows[0].appearance={shape:'viscous',particleColor:'#ab7318',arrowColor:'#FFDA92',opacity:.85};
+ a.deepEqual(d.director(s).flows[0].appearance,s.flows[0].appearance);
+ s.flows[0].appearance={};
+ a.deepEqual(d.director(s).flows[0].appearance,{shape:'drop',particleColor:null,arrowColor:null,opacity:null});
+ for(const appearance of [{shape:'steam-code'}, {particleColor:'#123'}, {arrowColor:'rgb(1,2,3)'},
+  {opacity:1.5},{opacity:0},{opacity:Infinity},{materialUrl:'invalid'},null]){
+  s.flows[0].appearance=appearance;
+  a.throws(()=>d.director(s),/flow/i);
+ }
+});
