@@ -4,25 +4,27 @@ const vector=(v,max=100)=>Array.isArray(v)&&v.length===3&&v.every(n=>Number.isFi
 const vec=(v,d,m)=>{if(v===undefined)return d;if(!vector(v,m))throw Error('Invalid director vector');return v;};
 function flowAppearance(raw,medium){
  if(raw===undefined)return null;
- if(!keys(raw,['shape','arrowColor','particleColor','opacity']))throw Error('Invalid flow appearance.');
- const {shape=medium==='water'?'drop':'bead',arrowColor,particleColor,opacity}=raw;
+ if(!keys(raw,['shape','arrowColor','particleColor','opacity','arrowStyle','trace']))throw Error('Invalid flow appearance.');
+ const {shape=medium==='water'?'drop':'bead',arrowColor,particleColor,opacity,arrowStyle,trace}=raw;
  const validColor=value=>value===undefined||(typeof value==='string'&&/^#[\da-f]{6}$/i.test(value));
  if(!['drop','bead','viscous','mist'].includes(shape)||!validColor(arrowColor)||!validColor(particleColor)||
     (opacity!==undefined&&(!Number.isFinite(opacity)||opacity<=0||opacity>1))){
   throw Error('Invalid flow shape, color or particle opacity.');
  }
- return {shape,arrowColor:arrowColor??null,particleColor:particleColor??null,opacity:opacity??null};
+ if((arrowStyle!==undefined&&arrowStyle!=='schematic')||
+    (trace!==undefined&&!['ribbon','streamline'].includes(trace)))throw Error('Invalid flow arrow or trace style.');
+ return {shape,arrowColor:arrowColor??null,particleColor:particleColor??null,opacity:opacity??null,arrowStyle:arrowStyle??null,trace:trace??null};
 }
 function flowPlan(raw,objectIds,seconds){
  if(raw===undefined)return [];
  if(!Array.isArray(raw)||raw.length>4)throw Error('Director supports up to 4 flow tracks.');
  const ids=new Set();
  return raw.map(track=>{
-  if(!keys(track,['id','object','points','medium','seed','arrows','particles','arrowCount','particleCount','stages','appearance'])||
+  if(!keys(track,['id','object','points','medium','seed','arrows','particles','arrowCount','particleCount','stages','appearance','traceValues'])||
      typeof track.id!=='string'||!/^[a-z][a-z0-9_-]{0,31}$/.test(track.id)||ids.has(track.id)){
    throw Error('Invalid or duplicate flow track ID.');
   }
-  const {id,object=null,points,medium,seed=1,arrows=true,particles=true,arrowCount=7,particleCount=48,stages}=track;
+  const {id,object=null,points,medium,seed=1,arrows=true,particles=true,arrowCount=7,particleCount=48,stages,traceValues}=track;
   ids.add(id);
   if((track.object!==undefined&&!objectIds.has(object))||!['air','water'].includes(medium)||
      !Number.isInteger(seed)||seed<0||seed>0xffffffff||typeof arrows!=='boolean'||typeof particles!=='boolean'||
@@ -31,6 +33,11 @@ function flowPlan(raw,objectIds,seconds){
   }
   if(!Array.isArray(points)||points.length<2||points.length>64||!points.every(p=>vector(p))){
    throw Error('Flow path must contain 2 to 64 finite 3D points.');
+  }
+  const appearance=flowAppearance(track.appearance,medium);
+  if(traceValues!==undefined&&(!appearance?.trace||!Array.isArray(traceValues)||traceValues.length!==points.length||
+     !Array.from(traceValues).every(n=>Number.isFinite(n)&&n>=0&&n<=1))){
+   throw Error('Flow trace values require a trace and one value from 0 to 1 per path point.');
   }
   let length=0;
   for(let i=1;i<points.length;i++){
@@ -61,7 +68,7 @@ function flowPlan(raw,objectIds,seconds){
    }
    return {start,end,direction:stage.direction==='forward'?1:-1,speed,stop};
   });
-  return {id,object,points,medium,seed,arrows,particles,arrowCount,particleCount,stages:phases,appearance:flowAppearance(track.appearance,medium)};
+  return {id,object,points,medium,seed,arrows,particles,arrowCount,particleCount,stages:phases,appearance,traceValues:traceValues??null};
  });
 }
 function director(input){

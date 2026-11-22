@@ -135,12 +135,29 @@ test('flow appearance is optional and compiles a named profile with explicit col
  s.flows=[flowTrack()];
  a.equal(d.director(s).flows[0].appearance,null);
  s.flows[0].appearance={shape:'viscous',particleColor:'#ab7318',arrowColor:'#FFDA92',opacity:.85};
- a.deepEqual(d.director(s).flows[0].appearance,s.flows[0].appearance);
+ a.deepEqual(d.director(s).flows[0].appearance,{...s.flows[0].appearance,arrowStyle:null,trace:null});
  s.flows[0].appearance={};
- a.deepEqual(d.director(s).flows[0].appearance,{shape:'drop',particleColor:null,arrowColor:null,opacity:null});
+ a.deepEqual(d.director(s).flows[0].appearance,{shape:'drop',particleColor:null,arrowColor:null,opacity:null,arrowStyle:null,trace:null});
  for(const appearance of [{shape:'steam-code'}, {particleColor:'#123'}, {arrowColor:'rgb(1,2,3)'},
-  {opacity:1.5},{opacity:0},{opacity:Infinity},{materialUrl:'invalid'},null]){
+  {opacity:1.5},{opacity:0},{opacity:Infinity},{materialUrl:'invalid'},{arrowStyle:'cursive'},{trace:'sheet'},null]){
   s.flows[0].appearance=appearance;
   a.throws(()=>d.director(s),/flow/i);
+ }
+});
+
+test('flow relative colors require a trace and one normalized sample per path point',()=>{
+ const s=scene(),track={...flowTrack(),arrows:false,particles:false,traceValues:[0,.5,1]};
+ s.flows=[track];
+ a.throws(()=>d.director(s),/trace values/i);
+ for(const trace of ['ribbon','streamline']){
+  track.appearance={arrowStyle:'schematic',trace};
+  const compiled=d.director(s).flows[0];
+  a.deepEqual(compiled.traceValues,[0,.5,1]);
+  a.equal(compiled.appearance.arrowStyle,'schematic');
+  a.equal(compiled.appearance.trace,trace);
+ }
+ for(const values of [null,{},[0,1],[0,-.1,1],[0,1.1,1],[0,NaN,1],[0,'0.5',1],[0,,1]]){
+  track.traceValues=values;
+  a.throws(()=>d.director(s),/trace values/i);
  }
 });

@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "seconds": 8,
+  "camera": [
+    {"time": 0, "position": [0.53, 0.71, 8.4], "lookAt": [0, 0.04, 0], "fov": 39},
+    {"time": 8, "position": [0.53, 0.71, 8.4], "lookAt": [0, 0.04, 0], "fov": 39}
+  ],
+  "objects": [{"id": "manifold", "file": "junction.glb"}],
+  "lighting": {"direction": [1, 4, 5], "intensity": 2, "color": "#f6faff"},
+  "notes": [
+    {"object": "manifold", "text": "氣流", "point": [-3.04, 1.57, 0.43]},
+    {"object": "manifold", "text": "液流", "point": [-3.04, -1.0, 0.43]},
+    {"object": "manifold", "text": "合流", "point": [2.76, 0.56, 0.43]}
+  ],
+  "flows": [
+    {
+      "id": "air-inlet",
+      "object": "manifold",
+      "points": [[-3.09, 1.01, 0.15], [-2.36, 1.01, 0.15], [-1.68, 1, 0.15], [-1.23, 0.913, 0.15], [-0.69, 0.647, 0.15], [-0.03, 0.24, 0.15], [0.52, 0, 0.15]],
+      "medium": "air",
+      "particles": false,
+      "arrowCount": 4,
+      "appearance": {"arrowStyle": "schematic", "trace": "ribbon", "arrowColor": "#8CE5FF", "particleColor": "#4CA8F4"},
+      "stages": [{"start": 0, "end": 8, "direction": "forward", "speed": 1.2}]
+    },
+    {
+      "id": "liquid-inlet",
+      "object": "manifold",
+      "points": [[-3.09, -1.01, 0.15], [-2.36, -1.01, 0.15], [-1.68, -1, 0.15], [-1.23, -0.913, 0.15], [-0.69, -0.647, 0.15], [-0.03, -0.24, 0.15], [0.52, 0, 0.15]],
+      "medium": "water",
+      "particles": false,
+      "arrowCount": 4,
+      "appearance": {"arrowStyle": "schematic", "trace": "ribbon", "arrowColor": "#FFD192", "particleColor": "#ED963D"},
+      "stages": [{"start": 0, "end": 8, "direction": "forward", "speed": 1.2}]
+    },
+    {
+      "id": "mixed-outlet",
+      "object": "manifold",
+      "points": [[0.52, 0, 0.15], [1.29, 0, 0.15], [2.17, 0, 0.15], [3.08, 0, 0.15]],
+      "medium": "water",
+      "particles": false,
+      "arrowCount": 3,
+      "appearance": {"arrowStyle": "schematic", "trace": "ribbon", "arrowColor": "#D4FFD1", "particleColor": "#65D8A4"},
+      "stages": [{"start": 0, "end": 8, "direction": "forward", "speed": 1.5}]
+    }
+  ],
+  "captions": [
+    {"text": "合流示意｜藍色氣流、琥珀液流、青綠混流", "start": 0, "end": 8}
+  ]
+}

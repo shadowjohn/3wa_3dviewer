@@ -217,3 +217,113 @@ test('media appearance presets and overrides preserve the approved arrow materia
   assert.equal(mistDrop.material.depthWrite, false);
   for (const layer of [original, viscous, mist]) layer.dispose();
 });
+
+test('schematic arrows face +Z in XY and turn with the direction of flow', async () => {
+  const { createDirectorFlow } = await flow;
+  const { Matrix4, Vector3 } = await three;
+  const layer = createDirectorFlow(makeTrack({
+    points: [[-2, 0, 0], [2, 0, 0]], particles: false,
+    appearance: { arrowStyle: 'schematic' },
+    stages: [{ start: 0, end: 2, direction: 1, speed: 1, stop: null },
+      { start: 2, end: 4, direction: -1, speed: 1, stop: { distance: 2, normal: [1, 0, 0] } }],
+  }));
+  const arrows = layer.root.children[0];
+  arrows.geometry.computeBoundingBox();
+  const size = arrows.geometry.boundingBox.getSize(new Vector3());
+  assert.ok(size.x > .30 && size.y > .40 && size.z < .025, 'arrow has a wide face and thin profile');
+  const matrix = new Matrix4();
+  for (const [time, direction] of [[1, 1], [3, -1]]) {
+    layer.update(time);
+    assert.ok(arrows.count > 0);
+    arrows.getMatrixAt(0, matrix);
+    assert.ok(new Vector3(0, 0, 1).transformDirection(matrix).z > .999);
+    assert.ok(new Vector3(0, 1, 0).transformDirection(matrix).x * direction > .999);
+    if (direction < 0) {
+      const vertices = arrows.geometry.getAttribute('position');
+      for (let i = 0; i < vertices.count; i++) {
+        assert.ok(new Vector3().fromBufferAttribute(vertices, i).applyMatrix4(matrix).x > 0);
+      }
+    }
+  }
+  layer.dispose();
+});
+
+test('standalone ribbon samples the whole color ramp, clips at the valve, and cleans up', async () => {
+  const { createDirectorFlow } = await flow;
+  const layer = createDirectorFlow(makeTrack({
+    points: [[-2, 0, 0], [2, 0, 0]], arrows: false, particles: false,
+    appearance: { trace: 'ribbon' }, traceValues: [0, 1],
+    stages: [{ start: 1, end: 3, direction: 1, speed: 1, stop: null },
+      { start: 4, end: 5, direction: -1, speed: 0, stop: { distance: 2, normal: [1, 0, 0] } }],
+  }));
+  assert.deepEqual(layer.root.children.map(mesh => mesh.name), ['ribbon']);
+  const ribbon = layer.root.children[0];
+  assert.ok(ribbon.material.transparent && ribbon.material.opacity < 1);
+  layer.update(.5);
+  assert.equal(layer.root.visible, false);
+  layer.update(1.5);
+  assert.equal(layer.root.visible, true);
+  const full = ribbon.geometry;
+  const colors = full.getAttribute('color');
+  const distinct = new Set();
+  for (let i = 0; i < colors.count; i++) distinct.add([colors.getX(i), colors.getY(i), colors.getZ(i)].join(','));
+  assert.equal(distinct.size, 4);
+  layer.update(2.25);
+  assert.equal(ribbon.geometry, full, 'trace remains geometrically steady within a stage');
+  layer.update(3.5);
+  assert.equal(layer.root.visible, false);
+  layer.update(4.25);
+  assert.equal(layer.root.visible, true);
+  const clipped = ribbon.geometry;
+  const points = clipped.getAttribute('position');
+  let min = Infinity;
+  for (let i = 0; i < points.count; i++) min = Math.min(min, points.getX(i));
+  assert.ok(min >= 0 && min < .1, 'full ribbon extent stops before the plane');
+  layer.update(1.5);
+  assert.equal(ribbon.geometry, full, 'seeking restores the earlier stage geometry');
+  layer.update(5);
+  assert.equal(layer.root.visible, false);
+  let disposed = 0;
+  for (const resource of [full, clipped, ribbon.material]) resource.addEventListener('dispose', () => disposed++);
+  layer.dispose();
+  layer.dispose();
+  assert.equal(disposed, 3);
+});
+
+test('3D ribbon keeps its width when the tangent crosses its front axis', async () => {
+  const { createDirectorFlow } = await flow;
+  const { Vector3 } = await three;
+  const layer = createDirectorFlow(makeTrack({
+    points: [[0, 0, 0], [.2, 0, 1], [-.1, 0, 2], [-.3, 0, 3]],
+    arrows: false, particles: false, appearance: { trace: 'ribbon' },
+  }));
+  layer.update(2);
+  const positions = layer.root.children[0].geometry.getAttribute('position');
+  for (let i = 2; i < positions.count; i += 2) {
+    const previousWidth = new Vector3().fromBufferAttribute(positions, i - 2)
+      .sub(new Vector3().fromBufferAttribute(positions, i - 1));
+    const width = new Vector3().fromBufferAttribute(positions, i)
+      .sub(new Vector3().fromBufferAttribute(positions, i + 1));
+    assert.ok(previousWidth.lerp(width, .5).length() > .17, 'adjacent rings cannot pinch the ribbon between them');
+  }
+  layer.dispose();
+});
+
+test('streamline is a thin solid trace and uses the particle tint without scalar values', async () => {
+  const { createDirectorFlow } = await flow;
+  const { Vector3 } = await three;
+  const layer = createDirectorFlow(makeTrack({
+    points: [[-2, 0, 0], [2, 0, 0]], arrows: false, particles: false,
+    appearance: { trace: 'streamline', particleColor: '#55ca29' },
+  }));
+  const line = layer.root.children[0];
+  layer.update(2);
+  assert.equal(line.name, 'streamline');
+  assert.equal(line.geometry.hasAttribute('color'), false);
+  assert.equal(line.material.color.getHexString(), '55ca29');
+  assert.equal(line.material.transparent, false);
+  line.geometry.computeBoundingBox();
+  const size = line.geometry.boundingBox.getSize(new Vector3());
+  assert.ok(size.y > .02 && size.y < .04, 'streamline is thin even in world units');
+  layer.dispose();
+});

@@ -85,4 +85,10 @@
 
 可用 `appearance` 調整粒子輪廓和色澤，速度仍由 `stages` 設定。`shape` 支援 `drop`（原本的水滴）、`bead`（圓粒）、`viscous`（延展的濃液滴）與 `mist`（半透明霧粒）。`arrowColor` 和 `particleColor` 分別接受 `#RRGGBB`，`opacity` 控制粒子透明度，範圍大於 0 且不超過 1。三款同鏡位樣片見 [style-comparison.scene.json](../examples/view-flow1/style-comparison.scene.json)。
 
+`appearance.arrowStyle: "schematic"` 使用工程圖式寬箭頭。在路徑位於 XY 平面時，由 +Z 方向看可見箭頭正面。`appearance.trace` 可選 `ribbon`（半透明流帶）或 `streamline`（細流線），顯示於有效階段，並受同一截止平面約束。箭頭、粒子和流線可疊加，也可以只畫流線。
+
+流線和流帶預設沿用粒子顏色。要顯示相對流速，可加 `traceValues`，為每個 `points` 路徑點提供一筆 0–1 數值。顏色從低值的藍色漸變至高值的暖色，粒子移動速度仍由 `stages` 決定。方向箭頭與合流見 [junction.scene.json](../examples/view-flow1/reference-styles/junction.scene.json)，相對流速與回流見 [recirculation.scene.json](../examples/view-flow1/reference-styles/recirculation.scene.json)。兩組路徑與相對值均為合成示意。
+
+在倉庫根目錄執行 `python examples/view-flow1/reference-styles/generate_fixtures.py` 即可生成這兩段樣片用的 GLB。
+
 合成驗證場景在 [examples/view-flow1/check-valve.scene.json](../examples/view-flow1/check-valve.scene.json)。用同目錄的 [generate_fixture.py](../examples/view-flow1/generate_fixture.py) 匯出合成 GLB，將該 GLB 與腳本放在同一目錄即可預覽或出片。
