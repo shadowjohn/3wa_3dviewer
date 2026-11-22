@@ -21,10 +21,21 @@ const caption = byId('caption-text');
 const status = byId('load-status');
 const errorMessage = byId('player-error');
 const params = new URLSearchParams(location.search);
+const runtimeBase = new URL('.', import.meta.url);
 player.dataset.embed = String(params.get('embed') === '1');
 
+function assetUrl(filename) {
+  if (!player.dataset.assetEndpoint) return new URL(filename, runtimeBase);
+  const url = new URL(player.dataset.assetEndpoint, location.href);
+  if (url.origin !== location.origin || url.username || url.password) {
+    throw new Error('場景資源入口必須和播放器同來源。');
+  }
+  url.searchParams.set('file', filename);
+  return url;
+}
+
 async function request(filename) {
-  const response = await fetch('./' + filename, {mode: 'same-origin', redirect: 'error'});
+  const response = await fetch(assetUrl(filename), {mode: 'same-origin', redirect: 'error'});
   if (!response.ok) throw new Error(filename + ' (' + response.status + ')');
   return response;
 }
@@ -32,7 +43,7 @@ async function request(filename) {
 function mediaPath(value, extensions) {
   if (typeof value !== 'string' || !/^(?:[\w.-]+\/)*[\w.-]+$/.test(value)) return null;
   if (value.split('/').some(part => part === '.' || part === '..')) return null;
-  return extensions.test(value) ? './' + value : null;
+  return extensions.test(value) ? assetUrl(value).href : null;
 }
 
 async function prepareMedia() {
@@ -75,7 +86,7 @@ async function start() {
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
 
   let stage, releaseEnvironment, ktx;
-  const draco = new DRACOLoader().setDecoderPath('./decoders/draco/');
+  const draco = new DRACOLoader().setDecoderPath(new URL('decoders/draco/', runtimeBase).href);
   function dispose() {
     stage?.dispose();
     releaseEnvironment?.();
@@ -86,8 +97,13 @@ async function start() {
 
   try {
     releaseEnvironment = directorEnvironment(renderer, scene);
-    ktx = new KTX2Loader().setTranscoderPath('./decoders/basis/').detectSupport(renderer);
-    const loader = new GLTFLoader().setDRACOLoader(draco).setKTX2Loader(ktx).setMeshoptDecoder(MeshoptDecoder);
+    ktx = new KTX2Loader().setTranscoderPath(new URL('decoders/basis/', runtimeBase).href).detectSupport(renderer);
+    const manager = new THREE.LoadingManager();
+    manager.setURLModifier(url => {
+      if (/^(data:|blob:)/.test(url)) return url;
+      throw new Error('請使用內嵌資源的 GLB。');
+    });
+    const loader = new GLTFLoader(manager).setDRACOLoader(draco).setKTX2Loader(ktx).setMeshoptDecoder(MeshoptDecoder);
     stage = await createDirectorStage({
       job, renderer, scene, loader,
       async readModel(index) {
@@ -215,6 +231,7 @@ async function start() {
     orbit?.dispose();
     dispose();
   });
+  if (params.get('autoplay') === '1') togglePlayback();
 }
 
 prepareMedia().catch(() => {});

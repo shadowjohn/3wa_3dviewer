@@ -25,7 +25,7 @@ async function buildBrowserRuntime(output,{director=false}={}){
     const source=fs.readFileSync(args.path,'utf8');
     const before='this.workerSourceURL = URL.createObjectURL( new Blob( [ body ] ) );';
     if(!source.includes(before))throw Error('KTX2Loader changed; review static worker patch.');
-    const contents=source.replace(before,"this.workerSourceURL = new URL('decoders/basis/worker.js', window.location.href).href;");
+    const contents=source.replace(before,"this.workerSourceURL = new URL('decoders/basis/worker.js', import.meta.url).href;");
     return {contents,loader:'js'};
    });
   }}],
