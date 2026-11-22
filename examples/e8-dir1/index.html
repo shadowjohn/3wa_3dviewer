@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header><h1>E8 腳本寶</h1></header>
+  <header><h1>E8 腳本寶</h1><a id="site-link" href="?site=wuri">烏日站前案場</a></header>
   <main>
     <section class="viewport" aria-label="測試圖台">
       <div id="map"></div>
@@ -18,10 +18,12 @@
     </section>
     <aside>
       <h2>合成單向閥</h2>
+      <p id="site-description" hidden>高鐵台中站｜站前步行區。示範排水逆止與模型定位。</p>
       <div class="actions">
         <button id="play" type="button" disabled>播放</button>
         <button id="camera" type="button" disabled>切換導演視角</button>
         <button id="detach" type="button" disabled>卸載場景</button>
+        <button id="overview" type="button" hidden disabled>站區總覽</button>
       </div>
       <label class="timeline" for="seek"><span>時間軸</span><output id="time" for="seek">0.00 秒</output></label>
       <input id="seek" type="range" min="0" value="0" disabled>

@@ -1,7 +1,7 @@
 :root { color-scheme: dark; font: 16px system-ui, sans-serif; background: #101923; color: #f1f6fb; }
 * { box-sizing: border-box; }
 body { margin: 0; }
-header { padding: 1rem 1.3rem; border-bottom: 1px solid #2c4054; }
+header { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; padding: 1rem 1.3rem; border-bottom: 1px solid #2c4054; }
 h1 { margin: 0; font-size: 1.4rem; }
 main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(17rem, 22rem); min-height: calc(100dvh - 3.85rem); }
 .viewport { position: relative; min-height: 25rem; overflow: hidden; }
@@ -13,6 +13,8 @@ main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(17rem, 22rem)
 #caption { position: absolute; bottom: 1.5rem; left: 50%; max-width: calc(100% - 3rem); margin: 0; transform: translateX(-50%); }
 aside { padding: 1.25rem; border-left: 1px solid #2c4054; background: #152331; }
 h2 { margin: 0 0 1rem; font-size: 1.15rem; }
+#site-link { color: #90e3e5; font-size: .9rem; }
+#site-description { margin: -.45rem 0 1rem; color: #becfdb; line-height: 1.45; }
 .actions { display: flex; flex-wrap: wrap; gap: .5rem; }
 button, input { font: inherit; }
 button { border: 1px solid #476581; border-radius: .45rem; background: #243c52; padding: .5rem .65rem; }

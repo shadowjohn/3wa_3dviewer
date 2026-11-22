@@ -9,11 +9,25 @@ const form = byId('anchor');
 const play = byId('play');
 const seek = byId('seek');
 const camera = byId('camera');
+const overview = byId('overview');
 const detach = byId('detach');
 const attach = byId('attach');
 const caption = byId('caption');
 const notes = byId('notes');
 const status = byId('status');
+const wuri = new URLSearchParams(location.search).get('site') === 'wuri';
+const detailView = {zoom: 21, pitch: 52, bearing: 15};
+const emptyFeatures = {type: 'FeatureCollection', features: []};
+
+if (wuri) {
+  document.title = 'E8 腳本寶｜烏日高鐵站前';
+  byId('longitude').value = '120.615115';
+  byId('latitude').value = '24.111754';
+  byId('site-description').hidden = false;
+  byId('site-link').href = './';
+  byId('site-link').textContent = '示意格線';
+  overview.hidden = false;
+}
 
 function readAnchor() {
   const longitude = byId('longitude').valueAsNumber;
@@ -28,7 +42,12 @@ function readAnchor() {
   return {longitude, latitude, altitude: Number.isNaN(altitude) ? undefined : altitude, heading, scale};
 }
 
-function testStyle({longitude, latitude}) {
+function anchorPoint({longitude, latitude}) {
+  return {type: 'Point', coordinates: [longitude, latitude]};
+}
+
+function mapStyle(anchor) {
+  const {longitude, latitude} = anchor;
   const features = [];
   const latStep = .000045;
   const lonStep = latStep / Math.cos(latitude * Math.PI / 180);
@@ -44,12 +63,31 @@ function testStyle({longitude, latitude}) {
       }},
     );
   }
-  return {version: 8, sources: {grid: {type: 'geojson', data: {type: 'FeatureCollection', features}}}, layers: [
+  const style = {version: 8, sources: {grid: {type: 'geojson', data: {type: 'FeatureCollection', features}}}, layers: [
     {id: 'background', type: 'background', paint: {'background-color': '#122537'}},
     {id: 'grid', source: 'grid', type: 'line', paint: {
       'line-color': ['case', ['get', 'major'], '#406281', '#263f58'], 'line-width': 1,
     }},
   ]};
+  if (wuri) {
+    style.sources.anchor = {type: 'geojson', data: emptyFeatures};
+    style.layers.push({id: 'anchor', source: 'anchor', type: 'circle', maxzoom: 20, paint: {
+      'circle-radius': 7, 'circle-color': '#22cfc8', 'circle-stroke-color': '#112535', 'circle-stroke-width': 2,
+    }});
+  }
+  return style;
+}
+
+function addStreetMap(map) {
+  map.addSource('street', {
+    type: 'raster',
+    tiles: ['https://wmts.nlsc.gov.tw/wmts/EMAP/default/EPSG:3857/{z}/{y}/{x}'],
+    tileSize: 256, maxzoom: 19, bounds: [120.6, 24.10, 120.63, 24.125],
+    attribution: '底圖 © 內政部國土測繪中心',
+  });
+  map.addLayer({id: 'street', source: 'street', type: 'raster', paint: {
+    'raster-opacity': 0.85, 'raster-saturation': -0.45, 'raster-brightness-max': 0.74,
+  }}, 'anchor');
 }
 
 async function start() {
@@ -58,7 +96,7 @@ async function start() {
   const job = directorPolicy.director(await response.json());
   const anchor = readAnchor();
   const host = new window.Easymap('map', {
-    center: anchor, zoom: 21, pitch: 52, bearing: 15, style: testStyle(anchor),
+    center: anchor, ...detailView, style: mapStyle(anchor),
   });
   await host.ready;
   const native = host.getNativeContext();
@@ -70,6 +108,7 @@ async function start() {
   let animation = 0;
   let frame = 0;
   let shot = null;
+  let activeAnchor = anchor;
   const last = job.frameCount - 1;
 
   function showNotes() {
@@ -130,7 +169,8 @@ async function start() {
     notes.replaceChildren();
     caption.hidden = true;
     camera.textContent = '切換導演視角';
-    for (const item of [play, camera, detach, seek]) item.disabled = true;
+    for (const item of [play, camera, detach, seek, overview]) item.disabled = true;
+    if (wuri) map.getSource('anchor').setData(emptyFeatures);
     attach.textContent = '掛載場景';
     status.textContent = '場景已卸載，可以繼續操作地圖。';
   }
@@ -151,13 +191,18 @@ async function start() {
       }});
       mounted = mountE8DirectorScene({map: host, root, ...options});
       root.updateWorldMatrix(true, true);
-      map.jumpTo({center: [options.longitude, options.latitude]});
+      activeAnchor = options;
+      if (wuri) {
+        map.getSource('anchor').setData(anchorPoint(activeAnchor));
+        overview.disabled = false;
+      }
+      map.jumpTo({center: anchorPoint(activeAnchor).coordinates});
       map.on('render', showNotes);
       for (const item of [play, camera, detach, seek]) item.disabled = false;
       attach.textContent = '套用錨點';
       status.textContent = options.altitude === undefined
-        ? '目前使用圖台零面。測試底圖無地形高程。'
-        : '使用指定的圖台高程。測試底圖無地形。';
+        ? '目前使用圖台零面。底圖未啟用地形。'
+        : '使用指定的圖台高程。底圖未啟用地形。';
       draw(0);
       pause();
     } catch (error) {
@@ -172,10 +217,16 @@ async function start() {
   play.onclick = togglePlayback;
   seek.max = last;
   seek.oninput = () => { pause(); draw(seek.valueAsNumber); };
+  function restoreMapCamera() {
+    if (!controlsDirector) return;
+    mounted.restoreCamera();
+    controlsDirector = false;
+    camera.textContent = '切換導演視角';
+  }
+
   camera.onclick = () => {
     if (controlsDirector) {
-      mounted.restoreCamera();
-      controlsDirector = false;
+      restoreMapCamera();
     } else {
       mounted.beginCamera();
       controlsDirector = true;
@@ -188,12 +239,25 @@ async function start() {
     }
     camera.textContent = controlsDirector ? '回地圖操作' : '切換導演視角';
   };
+  if (wuri) {
+    const updateOverviewLabel = () => {
+      overview.textContent = !controlsDirector && map.getZoom() < 20 ? '回到單向閥' : '站區總覽';
+    };
+    map.on('moveend', updateOverviewLabel);
+    overview.onclick = () => {
+      restoreMapCamera();
+      const view = map.getZoom() < 20 ? detailView : {zoom: 18, pitch: 0, bearing: 0};
+      map.easeTo({center: anchorPoint(activeAnchor).coordinates, ...view, duration: 650});
+    };
+  }
   detach.onclick = detachScene;
   form.onsubmit = event => {
     event.preventDefault();
     attachScene().catch(error => { status.textContent = error.message; });
   };
   await attachScene();
+  // Optional street tiles must not block the standalone scene from initializing.
+  if (wuri) addStreetMap(map);
 }
 
 start().catch(error => { status.textContent = error.message; console.error(error); });

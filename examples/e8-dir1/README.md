@@ -14,7 +14,9 @@ python -m http.server 18792 --bind 127.0.0.1 --directory web-e8-director
 
 開啟 `http://127.0.0.1:18792/`。拖動時間軸可看 3 秒正向流過、5 秒停流和 8 秒反向截止。可拖曳或縮放圖台，相機預設留給地圖操作。選擇導演視角會跟隨腳本，回到地圖操作會恢復切換前的鏡位。卸載後可套用不同錨點再掛載。
 
-經緯度為 WGS84。局部 `+X` 是正向，`+Y` 向上，朝向由北順時針計算。比例是每個局部單位對應的公尺數。高程空白時用此測試圖台的零面，示意底圖無 DEM，不能推論實際地表或海拔。
+點「烏日站前案場」或用 `?site=wuri`，可在高鐵台中站旁的步行區看同一份合成排水逆止展示。「站區總覽」顯示站區街道與場景錨點，「回到單向閥」回到可看清模型的縮放層級，保留播放進度。參考 [OpenStreetMap 步行區](https://www.openstreetmap.org/way/651511201)，街道底圖使用[國土測繪中心 EMAP WMTS](https://maps.nlsc.gov.tw/S09SOA/pro/Wmts_ajax_main.jsp)，需連網。場景與示意格線可獨立載入。
+
+經緯度為 WGS84。局部 `+X` 是正向，`+Y` 向上，朝向由北順時針計算。比例是每個局部單位對應的公尺數。高程空白時用此測試圖台的零面；兩個底圖皆無 DEM。
 
 ```powershell
 node --test test/e8-director-map.test.cjs test/director.test.cjs
