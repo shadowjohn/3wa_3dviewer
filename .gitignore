@@ -8,5 +8,6 @@ portable-data/
 *.log
 /web/
 /web-e8-director/
+/web-hsr-pickup/
 
 *.vrm

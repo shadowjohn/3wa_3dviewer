@@ -1,0 +1,90 @@
+{
+  "version": 1,
+  "seconds": 19,
+  "shots": [
+    {
+      "end": 4.8,
+      "camera": [
+        {"time": 0, "position": [-11.5, 10.4, -11.8], "lookAt": [-9.6, 0.6, 1.8], "fov": 53},
+        {"time": 2.1, "position": [-9, 9.5, -11.5], "lookAt": [-6.5, 0.7, 1.5], "fov": 49},
+        {"time": 4.8, "position": [-5.7, 7, -10.5], "lookAt": [-2, 0.8, 1.2], "fov": 46}
+      ]
+    },
+    {
+      "end": 8,
+      "camera": [
+        {"time": 0, "position": [-0.8, 4.9, 7.3], "lookAt": [0.8, 0.95, 1.65], "fov": 47},
+        {"time": 3.2, "position": [-1.1, 4.2, 6.7], "lookAt": [0.45, 0.98, 1.65], "fov": 42}
+      ]
+    },
+    {
+      "end": 12.8,
+      "camera": [
+        {"time": 0, "position": [4.8, 2.8, 6.4], "lookAt": [0.3, 0.92, 0.9], "fov": 38},
+        {"time": 2.3, "position": [4.2, 2.5, 5.8], "lookAt": [0.23, 0.88, 0.9], "fov": 37},
+        {"time": 4.8, "position": [3.5, 2.7, 6.2], "lookAt": [0.2, 0.88, 0.62], "fov": 39}
+      ]
+    },
+    {
+      "end": 19,
+      "camera": [
+        {"time": 0, "position": [7.3, 5.6, -10], "lookAt": [2, 0.9, 0.1], "fov": 45},
+        {"time": 2.7, "position": [9.2, 7.5, -11.3], "lookAt": [8, 0.9, 0.25], "fov": 46},
+        {"time": 6.2, "position": [11, 10.5, -11.8], "lookAt": [12, 0.5, 0.5], "fov": 57}
+      ]
+    }
+  ],
+  "objects": [
+    {"id": "stop", "file": "stage.glb"},
+    {
+      "id": "car",
+      "file": "car.glb",
+      "animation": {"clip": "PickupDoor", "loop": "once"},
+      "movement": [
+        {"time": 0, "position": [-19.5, 0, -0.55], "rotation": [0, 0, 0]},
+        {"time": 1.4, "position": [-12.7, 0, -0.55], "rotation": [0, 0, 0]},
+        {"time": 2.75, "position": [-6.8, 0, -0.35], "rotation": [0, -3, 0]},
+        {"time": 3.85, "position": [-2.9, 0, -0.12], "rotation": [0, -3, 0]},
+        {"time": 4.65, "position": [-0.95, 0, 0], "rotation": [0, 0, 0]},
+        {"time": 5.2, "position": [-0.14, 0, 0], "rotation": [0, 0, 0]},
+        {"time": 5.5, "position": [0, 0, 0], "rotation": [0, 0, 0]},
+        {"time": 13.1, "position": [0, 0, 0], "rotation": [0, 0, 0]},
+        {"time": 13.65, "position": [0.45, 0, 0], "rotation": [0, 0, 0]},
+        {"time": 14.65, "position": [2.75, 0, -0.12], "rotation": [0, 4, 0]},
+        {"time": 15.8, "position": [7.45, 0, -0.46], "rotation": [0, 4, 0]},
+        {"time": 17.3, "position": [16.15, 0, -0.55], "rotation": [0, 0, 0]},
+        {"time": 19, "position": [28.1, 0, -0.55], "rotation": [0, 0, 0]}
+      ]
+    },
+    {
+      "id": "passenger",
+      "file": "passenger.glb",
+      "animation": {"clip": "PickupPassenger", "loop": "once"},
+      "movement": [
+        {"time": 0, "position": [2.9, 0.16, 5.35], "rotation": [0, 23, 0]},
+        {"time": 6.25, "position": [2.9, 0.16, 5.35], "rotation": [0, 23, 0]},
+        {"time": 7.4, "position": [2.1, 0.16, 3.95], "rotation": [0, 29, 0]},
+        {"time": 8.6, "position": [1.1, 0.16, 2.5], "rotation": [0, 43, 0]},
+        {"time": 9.02, "position": [0.41, 0.16, 2.15], "rotation": [0, 57, 0]},
+        {"time": 9.32, "position": [0.08, 0.16, 1.94], "rotation": [0, 25, 0]},
+        {"time": 9.62, "position": [0.08, 0.06, 1.56], "rotation": [0, -8, 0]},
+        {"time": 9.82, "position": [0.20, 0, 1.34], "rotation": [0, -22, 0]},
+        {"time": 10.2, "position": [0.20, 0, 1.34], "rotation": [0, -28, 0]},
+        {"time": 10.8, "position": [0.47, 0.34, 0.87], "rotation": [0, -35, 0]},
+        {"time": 11.55, "position": [0.51, 0.39, 0.38], "rotation": [0, -85, 0]},
+        {"time": 19, "position": [0.51, 0.39, 0.38], "rotation": [0, -85, 0]}
+      ]
+    }
+  ],
+  "captions": [
+    {"start": 0, "end": 5.5, "text": "車輛進場 · 減速靠向載客月台"},
+    {"start": 5.5, "end": 8.35, "text": "靠邊停妥 · 乘客由候車區走向車門"},
+    {"start": 8.35, "end": 13.1, "text": "開門上車 · 確認車門關妥"},
+    {"start": 13.1, "end": 19, "text": "車輛駛離 · 讓出載客區"}
+  ],
+  "notes": [
+    {"object": "stop", "text": "7 號出口方向", "point": [0, 2.65, 5.4], "start": 0, "end": 4.8},
+    {"object": "car", "text": "靠邊停妥", "point": [0.1, 1.85, 0.25], "start": 5.5, "end": 7.3},
+    {"object": "passenger", "text": "從月台側上車", "point": [0, 1.84, 0], "start": 8.35, "end": 10.35}
+  ]
+}

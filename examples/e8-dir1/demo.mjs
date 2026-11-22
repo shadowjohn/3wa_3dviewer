@@ -15,8 +15,13 @@ const attach = byId('attach');
 const caption = byId('caption');
 const notes = byId('notes');
 const status = byId('status');
-const wuri = new URLSearchParams(location.search).get('site') === 'wuri';
-const detailView = {zoom: 21, pitch: 52, bearing: 15};
+const pickup = document.body.dataset.scene === 'pickup';
+const wuri = !pickup && new URLSearchParams(location.search).get('site') === 'wuri';
+const located = pickup || wuri;
+const sceneFile = pickup ? 'pickup.scene.json' : 'check-valve.scene.json';
+const sceneName = pickup ? '載客區' : '合成單向閥';
+const chapters = Array.from(document.querySelectorAll('button[data-seconds]'));
+const detailView = pickup ? {zoom: 20.25, pitch: 47, bearing: 15} : {zoom: 21, pitch: 52, bearing: 15};
 const emptyFeatures = {type: 'FeatureCollection', features: []};
 
 if (wuri) {
@@ -69,7 +74,7 @@ function mapStyle(anchor) {
       'line-color': ['case', ['get', 'major'], '#406281', '#263f58'], 'line-width': 1,
     }},
   ]};
-  if (wuri) {
+  if (located) {
     style.sources.anchor = {type: 'geojson', data: emptyFeatures};
     style.layers.push({id: 'anchor', source: 'anchor', type: 'circle', maxzoom: 20, paint: {
       'circle-radius': 7, 'circle-color': '#22cfc8', 'circle-stroke-color': '#112535', 'circle-stroke-width': 2,
@@ -91,8 +96,8 @@ function addStreetMap(map) {
 }
 
 async function start() {
-  const response = await fetch('./check-valve.scene.json', {mode: 'same-origin'});
-  if (!response.ok) throw Error('找不到合成單向閥導演腳本。');
+  const response = await fetch('./' + sceneFile, {mode: 'same-origin'});
+  if (!response.ok) throw Error('找不到' + sceneName + '導演腳本。');
   const job = directorPolicy.director(await response.json());
   const anchor = readAnchor();
   const host = new window.Easymap('map', {
@@ -109,6 +114,7 @@ async function start() {
   let frame = 0;
   let shot = null;
   let activeAnchor = anchor;
+  let activeChapter = null;
   const last = job.frameCount - 1;
 
   function showNotes() {
@@ -133,6 +139,12 @@ async function start() {
     mounted.repaint();
     seek.value = frame;
     byId('time').textContent = shot.time.toFixed(2) + ' / ' + job.seconds.toFixed(2) + ' 秒';
+    const chapter = chapters.findLast(item => shot.time >= Number(item.dataset.start));
+    if (chapter !== activeChapter) {
+      activeChapter?.setAttribute('aria-pressed', 'false');
+      chapter?.setAttribute('aria-pressed', 'true');
+      activeChapter = chapter;
+    }
     caption.textContent = shot.caption || '';
     caption.hidden = !shot.caption;
   }
@@ -169,8 +181,8 @@ async function start() {
     notes.replaceChildren();
     caption.hidden = true;
     camera.textContent = '切換導演視角';
-    for (const item of [play, camera, detach, seek, overview]) item.disabled = true;
-    if (wuri) map.getSource('anchor').setData(emptyFeatures);
+    for (const item of [play, camera, detach, seek, overview, ...chapters]) item.disabled = true;
+    if (located) map.getSource('anchor').setData(emptyFeatures);
     attach.textContent = '掛載場景';
     status.textContent = '場景已卸載，可以繼續操作地圖。';
   }
@@ -179,7 +191,7 @@ async function start() {
     const options = readAnchor();
     detachScene();
     attach.disabled = true;
-    status.textContent = '載入合成單向閥…';
+    status.textContent = '載入' + sceneName + '…';
     const root = new THREE.Group();
     root.add(new THREE.HemisphereLight(0xe4f0ff, 0x464e59, 1.8));
     const sunlight = new THREE.DirectionalLight(0xeef4ff, 2);
@@ -192,18 +204,19 @@ async function start() {
       mounted = mountE8DirectorScene({map: host, root, ...options});
       root.updateWorldMatrix(true, true);
       activeAnchor = options;
-      if (wuri) {
+      if (located) {
         map.getSource('anchor').setData(anchorPoint(activeAnchor));
         overview.disabled = false;
       }
       map.jumpTo({center: anchorPoint(activeAnchor).coordinates});
       map.on('render', showNotes);
-      for (const item of [play, camera, detach, seek]) item.disabled = false;
+      for (const item of [play, camera, detach, seek, ...chapters]) item.disabled = false;
       attach.textContent = '套用錨點';
       status.textContent = options.altitude === undefined
         ? '目前使用圖台零面。底圖未啟用地形。'
         : '使用指定的圖台高程。底圖未啟用地形。';
       draw(0);
+      if (pickup) useDirectorCamera();
       pause();
     } catch (error) {
       if (mounted) detachScene();
@@ -216,37 +229,51 @@ async function start() {
 
   play.onclick = togglePlayback;
   seek.max = last;
-  seek.oninput = () => { pause(); draw(seek.valueAsNumber); };
+  function seekTo(index) {
+    draw(index);
+    pause();
+  }
+  seek.oninput = () => seekTo(seek.valueAsNumber);
+  for (const chapter of chapters) {
+    chapter.onclick = () => seekTo(Math.round(Number(chapter.dataset.seconds) * job.fps));
+  }
   function restoreMapCamera() {
     if (!controlsDirector) return;
-    mounted.restoreCamera();
     controlsDirector = false;
+    mounted.restoreCamera();
     camera.textContent = '切換導演視角';
   }
 
-  camera.onclick = () => {
-    if (controlsDirector) {
+  function useDirectorCamera() {
+    mounted.beginCamera();
+    controlsDirector = true;
+    try { draw(frame); }
+    catch (error) {
       restoreMapCamera();
-    } else {
-      mounted.beginCamera();
-      controlsDirector = true;
-      try { draw(frame); }
-      catch (error) {
-        mounted.restoreCamera();
-        controlsDirector = false;
-        status.textContent = error.message;
-      }
+      throw error;
     }
-    camera.textContent = controlsDirector ? '回地圖操作' : '切換導演視角';
+    camera.textContent = '回地圖操作';
+  }
+
+  camera.onclick = () => {
+    try {
+      if (controlsDirector) restoreMapCamera();
+      else useDirectorCamera();
+    } catch (error) {
+      status.textContent = error.message;
+    }
   };
-  if (wuri) {
+  if (located) {
     const updateOverviewLabel = () => {
-      overview.textContent = !controlsDirector && map.getZoom() < 20 ? '回到單向閥' : '站區總覽';
+      overview.textContent = !controlsDirector && map.getZoom() < 20
+        ? (pickup ? '回到載客區' : '回到單向閥')
+        : '站區總覽';
     };
     map.on('moveend', updateOverviewLabel);
     overview.onclick = () => {
+      const goToDetail = !controlsDirector && map.getZoom() < 20;
       restoreMapCamera();
-      const view = map.getZoom() < 20 ? detailView : {zoom: 18, pitch: 0, bearing: 0};
+      const view = goToDetail ? detailView : {zoom: 18, pitch: 0, bearing: 0};
       map.easeTo({center: anchorPoint(activeAnchor).coordinates, ...view, duration: 650});
     };
   }
@@ -257,7 +284,7 @@ async function start() {
   };
   await attachScene();
   // Optional street tiles must not block the standalone scene from initializing.
-  if (wuri) addStreetMap(map);
+  if (located) addStreetMap(map);
 }
 
 start().catch(error => { status.textContent = error.message; console.error(error); });

@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>E8 腳本寶｜烏日高鐵一樓載客區</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="inc/javascript/easymap8/easymap.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-scene="pickup">
+  <main>
+    <header class="intro">
+      <div>
+        <p class="app-name">E8 腳本寶</p>
+        <h1>烏日高鐵一樓載客區</h1>
+        <p class="description">高鐵台中站 7 號出口旁。車道與接客動線為示意。</p>
+      </div>
+      <button id="overview" type="button" disabled>站區總覽</button>
+    </header>
+
+    <section class="player" aria-label="烏日高鐵接客場景">
+      <div class="viewport">
+        <div id="map"></div>
+        <div id="notes" aria-hidden="true"></div>
+        <p id="caption" hidden></p>
+      </div>
+      <div class="controls">
+        <div class="transport">
+          <button id="play" type="button" disabled>播放</button>
+          <button id="camera" type="button" disabled>切換導演視角</button>
+          <output id="time" for="seek">0.00 秒</output>
+        </div>
+        <input id="seek" type="range" min="0" value="0" aria-label="播放時間軸" disabled>
+        <div class="chapters" role="group" aria-label="運鏡章節">
+          <button type="button" data-start="0" data-seconds="1.4" aria-pressed="false" disabled>進場</button>
+          <button type="button" data-start="5.5" data-seconds="5.6" aria-pressed="false" disabled>停靠</button>
+          <button type="button" data-start="8.35" data-seconds="9.5" aria-pressed="false" disabled>上車</button>
+          <button type="button" data-start="13.1" data-seconds="14.7" aria-pressed="false" disabled>離開</button>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <p id="status" role="status">載入 E8 圖台…</p>
+      <details>
+        <summary>定位設定</summary>
+        <form id="anchor">
+          <div class="fields">
+            <label>經度<input id="longitude" type="number" step="any" value="120.61630" required></label>
+            <label>緯度<input id="latitude" type="number" step="any" value="24.11245" required></label>
+            <label>高程（m）<input id="altitude" type="number" step="any" placeholder="未指定"></label>
+            <label>朝向（度）<input id="heading" type="number" step="any" value="185.8" required></label>
+            <label>比例<input id="scale" type="number" step="any" value="1" required></label>
+          </div>
+          <div class="settings-actions">
+            <button id="attach" type="submit" disabled>套用錨點</button>
+            <button id="detach" type="button" disabled>卸載場景</button>
+          </div>
+        </form>
+      </details>
+    </footer>
+  </main>
+  <script src="inc/javascript/easymap8/easymap.js"></script>
+  <script type="module" src="demo.js"></script>
+</body>
+</html>
